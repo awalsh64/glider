@@ -7,6 +7,11 @@ export default {
   // Target: https://go.nuxtjs.dev/config-target
   target: 'static',
 
+  // Build to repo name for GitHub Pages
+  router: {
+    base: '/glider/'
+  },
+
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
     titleTemplate: '%s - glider',
