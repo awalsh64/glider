@@ -9,7 +9,7 @@ export default {
 
   // Build to repo name for GitHub Pages
   router: {
-    base: '/glider/'
+    base: '/glider'
   },
 
   // Global page headers: https://go.nuxtjs.dev/config-head
