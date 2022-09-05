@@ -11,6 +11,11 @@ export default {
   router: {
     base: '/glider'
   },
+  
+  // store url for github pages deployment
+  publicRuntimeConfig: {
+    BASE_URL: '/glider',
+  },
 
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
