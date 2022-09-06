@@ -9,9 +9,9 @@ export default {
 
   // Build to repo name for GitHub Pages
   router: {
-    base: '/glider'
+    base: '/glider',
   },
-  
+
   // store url for github pages deployment
   publicRuntimeConfig: {
     BASE_URL: '/glider',
@@ -94,4 +94,6 @@ export default {
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
   build: {},
+
+  telemetry: true,
 }
