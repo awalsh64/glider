@@ -40,13 +40,13 @@ export default {
     return {
       // Data points for the chart
       points: [
-        { x: 0, y: 0 },
-        { x: 1, y: 7 },
-        { x: 2, y: 3 },
-        { x: 3, y: 10 },
-        { x: 4, y: 12 },
-        { x: 5, y: 9 },
-        { x: 6, y: 15 },
+        { x: 0, y: 0, z: 4 },
+        { x: 1, y: 7, z: 12 },
+        { x: 2, y: 3, z: 6 },
+        { x: 3, y: 10, z: 3 },
+        { x: 4, y: 12, z: 10 },
+        { x: 5, y: 9, z: 7 },
+        { x: 6, y: 15, z: 6 },
       ],
     }
   },
