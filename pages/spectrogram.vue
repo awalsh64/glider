@@ -11,7 +11,6 @@
 </template>
 
 <script>
-import SpectrogramChart from '@/components/spectrogram-chart.vue';
 import Heatmap from '@/components/heatmap.vue';
 export default {
   name: 'Spectrogram',
