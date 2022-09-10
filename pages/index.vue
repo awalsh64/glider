@@ -20,17 +20,20 @@
           <v-btn color="primary" nuxt to="/import-files"> Import </v-btn>
         </v-card-actions>
       </v-card>
-      <line-chart />
+      <!-- <line-chart /> -->
+      <spectrogram />
     </v-col>
   </v-row>
 </template>
 
 <script>
 import LineChart from './line-chart.vue'
+import Spectrogram from './spectrogram.vue'
 export default {
   name: 'IndexPage',
   components: {
     LineChart,
+    Spectrogram,
   },
   data: () => {
     return {}

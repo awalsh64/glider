@@ -13,7 +13,7 @@
 <script>
 import ChartData from '@/components/chart.vue'
 export default {
-  name: 'Line Chart',
+  name: 'LineChart',
   components: {
     ChartData,
   },
