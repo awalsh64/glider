@@ -36,11 +36,11 @@ export default {
   methods: {
     createChart() {
       // Create chartXY
+      // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/chartxy.html
       this.chart = lightningChart()
         .ChartXY({ container: `${this.chartId}`, theme: Themes.lightNew })
         .setTitle('Spectrogram')
-        .setMouseInteractionWheelZoom(false)
-        .setPadding({ right: 40 });
+        .setMouseInteractionWheelZoom(false);
 
       //set axes titles
       this.chart.getDefaultAxisX().setTitle('Time (s)');

@@ -24,12 +24,12 @@
         </v-list-item>
       </v-list>
     </v-navigation-drawer>
-    <v-app-bar clipped-left fixed app>
+    <v-app-bar clipped-left fixed app dense>
       <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
       <v-btn icon @click.stop="miniVariant = !miniVariant">
         <v-icon>mdi-{{ `chevron-${miniVariant ? 'right' : 'left'}` }}</v-icon>
       </v-btn>
-      <v-toolbar-title v-text="title" />
+      <v-toolbar-title v-text="title" dense />
       <v-spacer />
       <v-btn icon @click.stop="rightDrawer = !rightDrawer">
         <v-icon>mdi-menu</v-icon>
@@ -69,12 +69,17 @@ export default {
           title: 'Import',
           to: '/import-files',
         },
+        {
+          icon: 'mdi-chart-scatter-plot',
+          title: 'Data Viewer',
+          to: '/data-viewer',
+        },
       ],
       miniVariant: false,
       right: true,
       rightDrawer: false,
       title: 'Gilder Data Viewer',
-    }
+    };
   },
-}
+};
 </script>
