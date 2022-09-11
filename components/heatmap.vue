@@ -39,7 +39,12 @@ export default {
       this.chart = lightningChart()
         .ChartXY({ container: `${this.chartId}`, theme: Themes.lightNew })
         .setTitle('Spectrogram')
+        .setMouseInteractionWheelZoom(false)
         .setPadding({ right: 40 });
+
+      //set axes titles
+      this.chart.getDefaultAxisX().setTitle('Time (s)');
+      this.chart.getDefaultAxisY().setTitle('Frequency (Hz)');
       // Create LUT and FillStyle
       const palette = new LUT({
         units: 'dB',
@@ -72,7 +77,18 @@ export default {
         .setWireframeStyle(emptyLine)
         // Use look up table (LUT) to get heatmap intensity value coloring
         .invalidateIntensityValues(data)
-        .setMouseInteractions(false);
+        .setMouseInteractions(false)
+        .setCursorResultTableFormatter((builder, series, dataPoint) =>
+          builder
+            .addRow('Acoustic Data')
+            .addRow('Time:', '', series.axisX.formatValue(dataPoint.x) + ' s')
+            .addRow(
+              'Frequency:',
+              '',
+              series.axisY.formatValue(dataPoint.y) + ' Hz'
+            )
+            .addRow('Amplitude:', '', dataPoint.intensity.toFixed(1) + ' dB')
+        );
 
       // Add LegendBox.
       this.chart
