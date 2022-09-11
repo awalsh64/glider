@@ -9,6 +9,8 @@ import {
   PalettedFill,
   LUT,
   ColorRGBA,
+  SolidFill,
+  ColorHEX,
   emptyLine,
   Themes,
   LegendBoxBuilders,
@@ -29,6 +31,12 @@ export default {
       },
     };
   },
+  props: {
+    selectedTime: {
+      type: Number,
+      default: 1,
+    },
+  },
   beforeMount() {
     // Generate random ID to us as the containerId for the chart and the target div id
     this.chartId = Math.trunc(Math.random() * 1000000);
@@ -38,7 +46,10 @@ export default {
       // Create chartXY
       // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/chartxy.html
       this.chart = lightningChart()
-        .ChartXY({ container: `${this.chartId}`, theme: Themes.lightNew })
+        .ChartXY({
+          container: `${this.chartId}`,
+          theme: Themes.darkGold,
+        })
         .setTitle('Spectrogram')
         .setMouseInteractionWheelZoom(false);
 
@@ -63,7 +74,7 @@ export default {
       });
 
       // Add a Heatmap to the Chart.
-      this.chart
+      this.data = this.chart
         .addHeatmapGridSeries({
           columns: this.resolution.x,
           rows: this.resolution.y,
@@ -100,11 +111,32 @@ export default {
         })
         .add(this.chart);
     },
+    setSelectedTime() {
+      return this.chart
+        .addLineSeries()
+        .setStrokeStyle((style) =>
+          style
+            .setThickness(3)
+            .setFillStyle(new SolidFill({ color: ColorHEX('#F00') }))
+        )
+        .add([
+          { x: this.selectedTime, y: 0 },
+          { x: this.selectedTime, y: this.data.getYMax() },
+        ]);
+    },
+  },
+  watch: {
+    selectedTime() {
+      console.log('time');
+      this.selectedTimeLine.dispose();
+      this.selectedTimeLine = this.setSelectedTime();
+    },
   },
   mounted() {
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM
     this.createChart();
+    this.selectedTimeLine = this.setSelectedTime();
   },
   beforeUnmount() {
     // "dispose" should be called when the component is unmounted to free all the resources used by the chart

@@ -3,7 +3,13 @@
 </template>
 
 <script>
-import { lightningChart } from '@arction/lcjs';
+import {
+  lightningChart,
+  SolidFill,
+  ColorHEX,
+  translatePoint,
+} from '@arction/lcjs';
+
 export default {
   name: 'Trajectory',
   props: {
@@ -20,6 +26,7 @@ export default {
     this.chart = null;
     return {
       chartId: null,
+      selectedTime: 1,
     };
   },
   beforeMount() {
@@ -29,6 +36,7 @@ export default {
   methods: {
     createChart() {
       // Create chartXY
+      // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/dashboard.html#createchartxy
       this.chart = lightningChart()
         .ChartXY({ container: `${this.chartId}` })
         // Set chart title
@@ -38,20 +46,52 @@ export default {
       //set axes titles
       this.chart.getDefaultAxisX().setTitle('Time (s)');
       this.chart.getDefaultAxisY().setTitle('Depth (ft)');
-      // Add line series to the chart
-      const lineSeries = this.chart
+
+      // Add line series to the chart for glider trajectory
+      this.lineSeries = this.chart
         .addLineSeries()
         .setCursorResultTableFormatter((builder, series, x, y) =>
           builder
             .addRow('Time:', '', series.axisX.formatValue(x) + ' s')
             .addRow('Depth:', '', series.axisY.formatValue(y) + ' ft')
+        )
+        // Set stroke style of the line
+        .setStrokeStyle((style) => style.setThickness(5))
+        // Add data points to the line series
+        .add(this.points);
+
+      // Add line for time selection
+      this.timeSelectedLine = this.setSelectedTime();
+
+      this.chart.onSeriesBackgroundMouseClick((_, event) => {
+        // TODO: Disable click when zooming(mousedrag)
+        // Translate mouse location to Axis coordinate system.
+        const curLocationAxis = translatePoint(
+          this.chart.engine.clientLocation2Engine(event.clientX, event.clientY),
+          this.chart.engine.scale,
+          this.lineSeries.scale
         );
-      // Set stroke style of the line
-      lineSeries.setStrokeStyle((style) => style.setThickness(5));
-      // Add data points to the line series
-      lineSeries.add(this.points);
+        this.selectedTime = curLocationAxis.x;
+        this.timeSelectedLine.dispose();
+        this.timeSelectedLine = this.setSelectedTime();
+        this.$emit('time', this.selectedTime);
+      });
+    },
+    setSelectedTime() {
+      return this.chart
+        .addLineSeries()
+        .setStrokeStyle((style) =>
+          style
+            .setThickness(3)
+            .setFillStyle(new SolidFill({ color: ColorHEX('#F00') }))
+        )
+        .add([
+          { x: this.selectedTime, y: 0 },
+          { x: this.selectedTime, y: 100 },
+        ]);
     },
   },
+
   mounted() {
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM

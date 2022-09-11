@@ -3,10 +3,10 @@
     <v-col>
       <v-card>
         <div id="app" style="height: 40vh">
-          <trajectory :points="points" />
+          <trajectory :points="gliderDepth" @time="selectedTime = $event" />
         </div>
         <div id="app" style="height: 50vh">
-          <heatmap />
+          <heatmap :selected-time="selectedTime" />
         </div>
       </v-card>
     </v-col>
@@ -23,14 +23,16 @@ export default {
     Heatmap,
   },
   data: () => {
-    return {};
+    return {
+      selectedTime: 1,
+    };
   },
   computed: {
-    points() {
+    gliderDepth() {
       return new Array(1000).fill(1).map((v, i) => {
         return {
           x: i,
-          y: Math.sin((0.001 * (i * 180)) / Math.PI) * 50 - 100,
+          y: Math.sin((0.001 * (i * 180)) / Math.PI) * 50 + 51,
         };
       });
     },
