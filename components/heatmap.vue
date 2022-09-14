@@ -9,6 +9,7 @@ import {
   PalettedFill,
   LUT,
   ColorRGBA,
+  ColorHSV,
   SolidFill,
   ColorHEX,
   emptyLine,
@@ -32,9 +33,21 @@ export default {
     };
   },
   props: {
+    spectrogramData: {
+      type: Array,
+      required: true,
+    },
     selectedTime: {
       type: Number,
       default: 1,
+    },
+    xMax: {
+      type: Number,
+      default: 1000,
+    },
+    yMax: {
+      type: Number,
+      default: 0,
     },
   },
   beforeMount() {
@@ -42,7 +55,15 @@ export default {
     this.chartId = Math.trunc(Math.random() * 1000000);
   },
   methods: {
+    // Define function that maps Uint8 [0, 255] to Decibels.
+    intensityDataToDb(intensity) {
+      //
+      const minDecibels = -100;
+      const maxDecibels = -30;
+      return minDecibels + (intensity / 255) * (maxDecibels - minDecibels);
+    },
     createChart() {
+      console.log('create');
       // Create chartXY
       // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/chartxy.html
       this.chart = lightningChart()
@@ -60,26 +81,58 @@ export default {
       const palette = new LUT({
         units: 'dB',
         steps: [
-          { value: 0, color: ColorRGBA(255, 255, 0) },
-          { value: 10, color: ColorRGBA(255, 0, 0) },
+          {
+            value: 0,
+            color: ColorHSV(0, 1, 0),
+            label: `${Math.round(this.intensityDataToDb(255 * (0 / 6)))}`,
+          },
+          {
+            value: 255 * (1 / 6),
+            color: ColorHSV(270, 0.84, 0.2),
+            label: `${Math.round(this.intensityDataToDb(255 * (1 / 6)))}`,
+          },
+          {
+            value: 255 * (2 / 6),
+            color: ColorHSV(289, 0.86, 0.35),
+            label: `${Math.round(this.intensityDataToDb(255 * (2 / 6)))}`,
+          },
+          {
+            value: 255 * (3 / 6),
+            color: ColorHSV(324, 0.97, 0.56),
+            label: `${Math.round(this.intensityDataToDb(255 * (3 / 6)))}`,
+          },
+          {
+            value: 255 * (4 / 6),
+            color: ColorHSV(1, 1, 1),
+            label: `${Math.round(this.intensityDataToDb(255 * (4 / 6)))}`,
+          },
+          {
+            value: 255 * (5 / 6),
+            color: ColorHSV(44, 0.64, 1),
+            label: `${Math.round(this.intensityDataToDb(255 * (5 / 6)))}`,
+          },
+          {
+            value: 255,
+            color: ColorHSV(62, 0.32, 1),
+            label: `${Math.round(this.intensityDataToDb(255 * (6 / 6)))}`,
+          },
         ],
         interpolate: true,
       });
 
-      // Generate heatmap data.
-      const data = new Array(this.resolution.x).fill(1).map(() => {
-        return new Array(this.resolution.y).fill(1).map(() => {
-          return Math.random() * 10;
-        });
-      });
-
+      const ylen = this.spectrogramData.length;
+      const xlen = this.spectrogramData[0].length;
+      const myData = this.spectrogramData;
       // Add a Heatmap to the Chart.
       this.data = this.chart
         .addHeatmapGridSeries({
-          columns: this.resolution.x,
-          rows: this.resolution.y,
+          columns: xlen,
+          rows: ylen,
           start: { x: 0, y: 0 },
-          end: { x: this.resolution.x, y: this.resolution.y },
+          end: {
+            x: xlen,
+            y: ylen,
+          },
           dataOrder: 'rows',
           heatmapDataType: 'intensity',
         })
@@ -87,7 +140,7 @@ export default {
         .setFillStyle(new PalettedFill({ lut: palette }))
         .setWireframeStyle(emptyLine)
         // Use look up table (LUT) to get heatmap intensity value coloring
-        .invalidateIntensityValues(data)
+        .invalidateIntensityValues(myData)
         .setMouseInteractions(false)
         .setCursorResultTableFormatter((builder, series, dataPoint) =>
           builder
@@ -98,7 +151,11 @@ export default {
               '',
               series.axisY.formatValue(dataPoint.y) + ' Hz'
             )
-            .addRow('Amplitude:', '', dataPoint.intensity.toFixed(1) + ' dB')
+            .addRow(
+              'Amplitude:',
+              '',
+              this.intensityDataToDb(dataPoint.intensity).toFixed(1) + ' dB'
+            )
         );
 
       // Add LegendBox.
@@ -131,12 +188,17 @@ export default {
       this.selectedTimeLine.dispose();
       this.selectedTimeLine = this.setSelectedTime();
     },
+    yMax() {
+      console.log(this.yMax);
+      this.createChart();
+      this.selectedTimeLine = this.setSelectedTime();
+    },
   },
   mounted() {
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM
-    this.createChart();
-    this.selectedTimeLine = this.setSelectedTime();
+    // this.createChart();
+    // this.selectedTimeLine = this.setSelectedTime();
   },
   beforeUnmount() {
     // "dispose" should be called when the component is unmounted to free all the resources used by the chart
