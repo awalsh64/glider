@@ -14,6 +14,7 @@
 </template>
 
 <script>
+// TODO:create dashboard for 2 plots
 import Trajectory from '@/components/chartxy.vue';
 import Heatmap from '@/components/heatmap.vue';
 export default {

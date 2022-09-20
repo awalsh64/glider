@@ -3,6 +3,7 @@
 </template>
 
 <script>
+//TODO: axis.addBand for current song playing location
 // Extract required parts from LightningChartJS.
 import {
   lightningChart,
@@ -27,15 +28,19 @@ export default {
     return {
       chartId: null,
       resolution: {
-        x: 1000,
-        y: 1000,
+        x: 2000,
+        y: 100,
       },
+      legend: false,
+      dataSeries: undefined,
     };
   },
   props: {
     spectrogramData: {
       type: Array,
-      required: true,
+      default: () => {
+        return [[]];
+      },
     },
     selectedTime: {
       type: Number,
@@ -49,36 +54,28 @@ export default {
       type: Number,
       default: 0,
     },
+    minDecibels: {
+      type: Number,
+      default: -100,
+    },
+    maxDecibels: {
+      type: Number,
+      default: -30,
+    },
+    index: {
+      type: Number,
+      default: 0,
+    },
   },
   beforeMount() {
     // Generate random ID to us as the containerId for the chart and the target div id
     this.chartId = Math.trunc(Math.random() * 1000000);
   },
-  methods: {
-    // Define function that maps Uint8 [0, 255] to Decibels.
-    intensityDataToDb(intensity) {
-      //
-      const minDecibels = -100;
-      const maxDecibels = -30;
-      return minDecibels + (intensity / 255) * (maxDecibels - minDecibels);
-    },
-    createChart() {
-      console.log('create');
-      // Create chartXY
-      // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/chartxy.html
-      this.chart = lightningChart()
-        .ChartXY({
-          container: `${this.chartId}`,
-          theme: Themes.darkGold,
-        })
-        .setTitle('Spectrogram')
-        .setMouseInteractionWheelZoom(false);
-
-      //set axes titles
-      this.chart.getDefaultAxisX().setTitle('Time (s)');
-      this.chart.getDefaultAxisY().setTitle('Frequency (Hz)');
-      // Create LUT and FillStyle
-      const palette = new LUT({
+  computed: {
+    palette() {
+      //slow
+      console.log('LUT');
+      return new LUT({
         units: 'dB',
         steps: [
           {
@@ -119,25 +116,55 @@ export default {
         ],
         interpolate: true,
       });
+    },
+  },
+  methods: {
+    // Define function that maps Uint8 [0, 255] to Decibels.
+    intensityDataToDb(intensity) {
+      return (
+        this.minDecibels +
+        (intensity / 255) * (this.maxDecibels - this.minDecibels)
+      );
+    },
+    createChart() {
+      if (this.chart) this.chart.dispose();
+      console.log('create chart');
+      // Create chartXY
+      // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/chartxy.html
+      this.chart = lightningChart()
+        .ChartXY({
+          container: `${this.chartId}`,
+          theme: Themes.darkGold,
+        })
+        .setTitle('Spectrogram')
+        .setMouseInteractionWheelZoom(false);
 
+      //set axes titles
+      this.chart.getDefaultAxisX().setTitle('Time (s)');
+      this.chart.getDefaultAxisY().setTitle('Frequency (Hz)');
+    },
+    addDataToChart() {
       const ylen = this.spectrogramData.length;
+      if (ylen === 1) return;
       const xlen = this.spectrogramData[0].length;
+      console.log(xlen, ylen);
       const myData = this.spectrogramData;
       // Add a Heatmap to the Chart.
-      this.data = this.chart
+      console.log('add data');
+      this.dataSeries = this.chart
         .addHeatmapGridSeries({
           columns: xlen,
           rows: ylen,
           start: { x: 0, y: 0 },
           end: {
-            x: xlen,
-            y: ylen,
+            x: this.xMax,
+            y: this.yMax,
           },
           dataOrder: 'rows',
           heatmapDataType: 'intensity',
         })
         // Color Heatmap using previously created color look up table.
-        .setFillStyle(new PalettedFill({ lut: palette }))
+        .setFillStyle(new PalettedFill({ lut: this.palette }))
         .setWireframeStyle(emptyLine)
         // Use look up table (LUT) to get heatmap intensity value coloring
         .invalidateIntensityValues(myData)
@@ -158,15 +185,16 @@ export default {
             )
         );
 
-      // Add LegendBox.
-      this.chart
+      // Add LegendBox
+      if (this.legend) this.legend.dispose();
+      this.legend = this.chart
         .addLegendBox(LegendBoxBuilders.HorizontalLegendBox)
         // Dispose example UI elements automatically if they take too much space. This is to avoid bad UI on mobile / etc. devices.
         .setAutoDispose({
           type: 'max-width',
           maxWidth: 0.8,
         })
-        .add(this.chart);
+        .add(this.dataSeries);
     },
     setSelectedTime() {
       return this.chart
@@ -178,26 +206,24 @@ export default {
         )
         .add([
           { x: this.selectedTime, y: 0 },
-          { x: this.selectedTime, y: this.data.getYMax() },
+          { x: this.selectedTime, y: this.xMax },
         ]);
     },
   },
   watch: {
-    selectedTime() {
-      console.log('time');
-      this.selectedTimeLine.dispose();
-      this.selectedTimeLine = this.setSelectedTime();
-    },
-    yMax() {
-      console.log(this.yMax);
+    // selectedTime() {
+    // this.selectedTimeLine.dispose();
+    // this.selectedTimeLine = this.setSelectedTime();
+    // },
+    index() {
       this.createChart();
-      this.selectedTimeLine = this.setSelectedTime();
+      this.addDataToChart();
     },
   },
   mounted() {
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM
-    // this.createChart();
+    this.createChart();
     // this.selectedTimeLine = this.setSelectedTime();
   },
   beforeUnmount() {

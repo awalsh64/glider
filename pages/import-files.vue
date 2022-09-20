@@ -1,8 +1,9 @@
 <template>
   <div class="container">
-    <div class="large-12 medium-12 small-12 cell">
+    <!-- File List -->
+    <div class="file-holder">
       <label
-        >Files
+        >Files:
         <input
           type="file"
           id="files"
@@ -11,27 +12,44 @@
           v-on:change="handleFilesUpload()"
         />
       </label>
-    </div>
-    <div class="large-12 medium-12 small-12 cell">
-      <div v-for="(file, key) in files" class="file-listing">
-        {{ file.name }}
-        <span class="remove-file" v-on:click="removeFile(key)">Remove</span>
+      <div>
+        <div v-for="(file, key) in files">
+          {{ file.name }}
+          <v-btn v-if="!loading" class="select-file" v-on:click="select(key)"
+            >Select</v-btn
+          >
+          <v-btn
+            v-if="!loading"
+            class="remove-file"
+            v-on:click="removeFile(key)"
+            >Remove</v-btn
+          >
+        </div>
       </div>
     </div>
-    <br />
-    <div class="large-12 medium-12 small-12 cell">
-      <button v-on:click="addFiles()">Add Files</button>
+    <div>
+      <!-- Add Files -->
+      <v-btn v-if="!loading" v-on:click="addFiles()">Add Files</v-btn>
+      <!-- Submit -->
+      <v-btn v-if="!loading" v-on:click="submitFiles()">Submit</v-btn>
+      <!-- Audio Player -->
+      <audio controls id="audio">
+        <source :src="audioSrc" type="audio/wav" />
+        Your browser does not support the audio tag.
+      </audio>
+      <!-- Loading -->
+      <span v-if="loading">Loading...</span>
     </div>
-    <br />
-    <div class="large-12 medium-12 small-12 cell">
-      <button v-on:click="submitFiles()">Submit</button>
-    </div>
-    <div class="audio-player" id="song"></div>
-    <div id="app" style="height: 50vh">
+
+    <!-- Spectrogram -->
+    <div class="plot-holder">
       <heatmap
         :spectrogram-data="spectrogramData"
         :x-max="duration"
         :y-max="maxFreq"
+        :min-decibels="minDecibels"
+        :max-decibels="maxDecibels"
+        :index="index"
       />
     </div>
   </div>
@@ -56,7 +74,11 @@ export default {
   data() {
     return {
       audioCtx: null,
+      audioSrc: null,
       files: [],
+      fileSelected: null,
+      loading: false,
+      index: 0,
       config: {
         /**
          * The resolution of the FFT calculations
@@ -100,6 +122,7 @@ export default {
         Submits files to the server
       */
     submitFiles() {
+      this.loading = true;
       /*
           Initialize the form data
         */
@@ -114,36 +137,30 @@ export default {
 
         formData.append('files[' + i + ']', file);
       }
-
-      const sound = document.createElement('audio');
-      sound.id = 'audio-player';
-      sound.controls = 'controls';
-      sound.src = URL.createObjectURL(this.files[0]);
-      sound.type = 'audio/wav';
-      document.getElementById('song').appendChild(sound);
-
-      this.playFile();
+      this.fileSelected = this.files.length - 1;
     },
 
     playFile() {
       this.audioCtx = new AudioContext();
 
       // create URL to reference imported audio file
-      const myAudio = URL.createObjectURL(this.files[0]);
+      const myAudio = URL.createObjectURL(this.files[this.fileSelected]);
 
       // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/decodeAudioData#examples
       // decode audio data loaded from an XMLHttpRequest
+      console.log('XML HTTP');
       const request = new XMLHttpRequest();
       request.open('GET', myAudio, true);
       request.responseType = 'arraybuffer';
       request.onload = () => {
+        console.log('loaded');
         // wait for file to load
         let audioData = request.response;
         this.audioCtx.decodeAudioData(audioData).then((decodedData) => {
           // use the decoded data here
-          console.log(decodedData);
+          console.log('decoded');
           const processed = this.processWaveform(decodedData);
-          console.log(processed);
+          console.log('processed');
           // //save processed audio data to store
           // this.formatSpectrogram(processed);
         });
@@ -159,6 +176,8 @@ export default {
       // Create a new OfflineAudioContext with information from the pre-created audioBuffer
       // The OfflineAudioContext can be used to process a audio file as fast as possible.
       // Normal AudioContext would process the file at the speed of playback.
+      const audioSampleRate = 128000; //128kHz
+      console.log('offline context');
       const offlineCtx = new OfflineAudioContext(
         audioBuffer.numberOfChannels,
         audioBuffer.length,
@@ -191,6 +210,10 @@ export default {
         analyzers[i] = offlineCtx.createAnalyser();
         analyzers[i].smoothingTimeConstant = this.config.smoothingTimeConstant;
         analyzers[i].fftSize = this.config.fftResolution;
+        analyzers[i].maxDecibels = -40;
+        analyzers[i].minDecibels = -100;
+        //TODO: figure out what decibel range to use
+        //Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/minDecibels
         // Connect the created analyzer to a single channel from the splitter
         splitter.connect(analyzers[i], i);
         channelDbRanges.push({
@@ -211,6 +234,7 @@ export default {
       let offset = 0;
       processor.onaudioprocess = (ev) => {
         // Run FFT for each channel
+        /////////slow
         for (let i = 0; i < source.channelCount; i += 1) {
           const freqData = new Uint8Array(
             channelFFtDataBuffers[i].buffer,
@@ -235,7 +259,6 @@ export default {
 
       // Process the audio buffer when loaded
       await offlineCtx.startRendering();
-
       const processed = {
         channels: channelFFtDataBuffers,
         channelDbRanges,
@@ -270,6 +293,8 @@ export default {
         this.maxFreq = Math.ceil(data.maxFreq / 2); //Use half of the fft data range
         this.minDecibels = data.channelDbRanges[i].minDecibels;
         this.maxDecibels = data.channelDbRanges[i].maxDecibels;
+        this.index++;
+        this.loading = false;
       }
     },
 
@@ -283,8 +308,6 @@ export default {
       /**
        * @type {Array<number>}
        */
-      const arr = Array.from(data);
-
       // Map the one dimensional data to two dimensional data where data goes from right to left
       // [1, 2, 3, 4, 5, 6]
       // -> strideSize = 2
@@ -293,15 +316,19 @@ export default {
       // [1, 4]
       // [2, 5]
       // [3, 6]
-      const output = Array.from(Array(strideSize)).map(() =>
-        Array.from(Array(tickCount))
-      );
+      // const output = Array.from(Array(strideSize)).map(() =>
+      // Array.from(Array(tickCount))
+      // );
+      console.log('remap data');
+      const output = [];
+      // console.log(output);
       for (let row = 0; row < strideSize; row += 1) {
+        output[row] = [];
         for (let col = 0; col < tickCount; col += 1) {
-          output[row][col] = arr[col * strideSize + row];
+          output[row][col] = data[col * strideSize + row];
         }
       }
-
+      console.log('done remapped');
       return output;
     },
     /*
@@ -324,8 +351,22 @@ export default {
     removeFile(key) {
       this.files.splice(key, 1);
     },
+    /*
+    Select file to display audio
+    */
+    select(key) {
+      this.fileSelected = key;
+    },
   },
-  mounted() {},
+  watch: {
+    fileSelected() {
+      this.loading = true;
+      this.audioSrc = URL.createObjectURL(this.files[this.fileSelected]);
+      const sound = document.getElementById('audio');
+      sound.load();
+      this.playFile();
+    },
+  },
 };
 </script>
 
@@ -335,13 +376,25 @@ input[type='file'] {
   top: -500px;
 }
 
-div.file-listing {
-  width: 200px;
-}
-
 span.remove-file {
   color: red;
   cursor: pointer;
   float: right;
+}
+
+span.select-file {
+  color: aqua;
+  cursor: pointer;
+  float: right;
+}
+
+.file-holder {
+  height: 30vh;
+  max-height: 30vh;
+  overflow-y: scroll;
+}
+
+.plot-holder {
+  height: 50vh;
 }
 </style>
