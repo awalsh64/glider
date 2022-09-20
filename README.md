@@ -1,6 +1,6 @@
 # glider
 ## Amanda Walsh 9/5/2022
-# This app can be access from:
+# This app is deployed to:
 https://awalsh64.github.io/glider/
 
 ## Build Setup
