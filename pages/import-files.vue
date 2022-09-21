@@ -59,10 +59,12 @@
 /**
  * TODO:
  * get correct colormap
- * setup heatmap with responsive x and y max values
+ * setup heatmap with responsive x and y max values-DONE
  * figure out if i need 1 or 2 channels of audio
  * setup store so heatmap gets data from store
- * decibel range props this.minDecibels,this.maxDecibels;
+ * decibel range props this.minDecibels,this.maxDecibels
+ * when adding files after submitting, only process new files
+ * fix indexing issue when loading 1 file
  */
 
 import Heatmap from '@/components/heatmap.vue';
@@ -76,7 +78,7 @@ export default {
       audioCtx: null,
       audioSrc: null,
       files: [],
-      fileSelected: null,
+      fileSelected: 0,
       loading: false,
       index: 0,
       config: {
@@ -99,14 +101,22 @@ export default {
         x: 1000,
         y: 1000,
       },
-      duration: 0,
-      maxFreq: 0,
       minDecibels: 0,
       maxDecibels: 0,
-      spectrogramData: [],
+      loadedFileInfo: [{ spectrogramData: [], duration: 0, maxFreq: 0 }],
     };
   },
-
+  computed: {
+    spectrogramData() {
+      return this.loadedFileInfo[this.fileSelected].spectrogramData;
+    },
+    duration() {
+      return this.loadedFileInfo[this.fileSelected].duration;
+    },
+    maxFreq() {
+      return this.loadedFileInfo[this.fileSelected].maxFreq;
+    },
+  },
   /*
       Defines the method used by the component
     */
@@ -121,7 +131,7 @@ export default {
     /*
         Submits files to the server
       */
-    submitFiles() {
+    async submitFiles() {
       this.loading = true;
       /*
           Initialize the form data
@@ -132,40 +142,51 @@ export default {
           Iterate over any file sent over appending the files
           to the form data.
         */
+      this.loading = true;
+
       for (var i = 0; i < this.files.length; i++) {
         let file = this.files[i];
 
         formData.append('files[' + i + ']', file);
+        const v = await this.loadAudioData(i);
+        this.loadedFileInfo[i] = v;
       }
       this.fileSelected = this.files.length - 1;
+      this.index++;
+      console.log('index ', this.index);
+      this.loading = false;
     },
 
-    playFile() {
-      this.audioCtx = new AudioContext();
+    async loadAudioData(index) {
+      console.log('load ', index);
+      const audioCtx = new AudioContext();
+      const processWaveform = this.processWaveform;
 
       // create URL to reference imported audio file
-      const myAudio = URL.createObjectURL(this.files[this.fileSelected]);
+      const myAudio = URL.createObjectURL(this.files[index]);
 
       // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/decodeAudioData#examples
       // decode audio data loaded from an XMLHttpRequest
       console.log('XML HTTP');
-      const request = new XMLHttpRequest();
-      request.open('GET', myAudio, true);
-      request.responseType = 'arraybuffer';
-      request.onload = () => {
-        console.log('loaded');
-        // wait for file to load
-        let audioData = request.response;
-        this.audioCtx.decodeAudioData(audioData).then((decodedData) => {
-          // use the decoded data here
-          console.log('decoded');
-          const processed = this.processWaveform(decodedData);
-          console.log('processed');
-          // //save processed audio data to store
-          // this.formatSpectrogram(processed);
-        });
-      };
-      request.send();
+      return new Promise(function (resolve) {
+        const request = new XMLHttpRequest();
+        request.open('GET', myAudio, true);
+        request.responseType = 'arraybuffer';
+        console.log(request);
+        request.onload = () => {
+          console.log('loaded');
+          // wait for file to load
+          let audioData = request.response;
+          audioCtx.decodeAudioData(audioData).then((decodedData) => {
+            // use the decoded data here
+            console.log('decoded');
+            resolve(processWaveform(decodedData));
+            console.log('processed');
+            // TODO: save processed audio data to store
+          });
+        };
+        request.send();
+      });
     },
     /**
      * Process a AudioBuffer and create FFT Data for Spectrogram from it.
@@ -271,33 +292,8 @@ export default {
       };
 
       //TODO: save processed audio data to store
-      this.formatSpectrogram(processed);
+      return this.formatSpectrogram(processed);
     },
-    /**
-     * Setup data for the chart
-     * */
-    async formatSpectrogram(data) {
-      // Create channels and set data for each channel
-      for (let i = 0; i < data.channels.length; i += 1) {
-        // Setup the data for the chart
-        const remappedData = this.remapDataToTwoDimensionalMatrix(
-          data.channels[i],
-          data.stride,
-          data.tickCount
-        )
-          // Slice only first half of data (rest are 0s).
-          .slice(0, data.stride / 2);
-        this.spectrogramData = remappedData;
-        //TODO: duration should be different units than seconds so you don't have to round
-        this.duration = Math.floor(data.duration);
-        this.maxFreq = Math.ceil(data.maxFreq / 2); //Use half of the fft data range
-        this.minDecibels = data.channelDbRanges[i].minDecibels;
-        this.maxDecibels = data.channelDbRanges[i].maxDecibels;
-        this.index++;
-        this.loading = false;
-      }
-    },
-
     /**
      * Create data matrix for heatmap from one dimensional array
      * @param {Uint8Array}  data        FFT Data
@@ -331,6 +327,33 @@ export default {
       console.log('done remapped');
       return output;
     },
+    /**
+     * Setup data for the chart
+     * */
+    async formatSpectrogram(data) {
+      // Create channels and set data for each channel
+      for (let i = 0; i < data.channels.length; i += 1) {
+        // Setup the data for the chart
+        const remappedData = this.remapDataToTwoDimensionalMatrix(
+          data.channels[i],
+          data.stride,
+          data.tickCount
+        )
+          // Slice only first half of data (rest are 0s).
+          .slice(0, data.stride / 2);
+        // this.spectrogramData = remappedData;
+        // //TODO: duration should be different units than seconds so you don't have to round
+        // this.duration = Math.floor(data.duration);
+        // this.maxFreq = Math.ceil(data.maxFreq / 2); //Use half of the fft data range
+        this.minDecibels = data.channelDbRanges[i].minDecibels;
+        this.maxDecibels = data.channelDbRanges[i].maxDecibels;
+        return {
+          duration: Math.floor(data.duration),
+          maxFreq: Math.ceil(data.maxFreq / 2),
+          spectrogramData: remappedData,
+        };
+      }
+    },
     /*
         Handles the uploading of files
       */
@@ -342,6 +365,11 @@ export default {
         */
       for (var i = 0; i < uploadedFiles.length; i++) {
         this.files.push(uploadedFiles[i]);
+        this.loadedFileInfo.push({
+          maxFreq: 0,
+          duration: 0,
+          spectrogramData: [],
+        });
       }
     },
 
@@ -356,15 +384,16 @@ export default {
     */
     select(key) {
       this.fileSelected = key;
+      this.index++;
+      //TODO: replace index with fileSelected but then fileSelected can't start at 0
     },
   },
   watch: {
     fileSelected() {
-      this.loading = true;
+      // add sound to audio player
       this.audioSrc = URL.createObjectURL(this.files[this.fileSelected]);
       const sound = document.getElementById('audio');
       sound.load();
-      this.playFile();
     },
   },
 };
