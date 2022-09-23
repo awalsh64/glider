@@ -3,6 +3,7 @@
 </template>
 
 <script>
+import { mapMutations, mapGetters } from 'vuex';
 //TODO: axis.addBand for current song playing location
 // Extract required parts from LightningChartJS.
 import {
@@ -36,31 +37,9 @@ export default {
     };
   },
   props: {
-    spectrogramData: {
-      type: Array,
-      default: () => {
-        return [[]];
-      },
-    },
     selectedTime: {
       type: Number,
       default: 1,
-    },
-    xMax: {
-      type: Number,
-      default: 1000,
-    },
-    yMax: {
-      type: Number,
-      default: 0,
-    },
-    minDecibels: {
-      type: Number,
-      default: -100,
-    },
-    maxDecibels: {
-      type: Number,
-      default: -30,
     },
     index: {
       type: Number,
@@ -72,6 +51,18 @@ export default {
     this.chartId = Math.trunc(Math.random() * 1000000);
   },
   computed: {
+    spectrogramData() {
+      if (this.$store.getters.getNumSpectrograms === 0) return []; //init as blank chart
+      return this.$store.getters.getSpectrogramData(this.index).spectrogramData;
+    },
+    xMax() {
+      if (this.$store.getters.getNumSpectrograms === 0) return 100; //init as blank chart
+      return this.$store.getters.getSpectrogramData(this.index).duration;
+    },
+    yMax() {
+      if (this.$store.getters.getNumSpectrograms === 0) return 100; //init as blank chart
+      return this.$store.getters.getSpectrogramData(this.index).maxFreq;
+    },
     palette() {
       //slow
       console.log('LUT');
@@ -122,11 +113,13 @@ export default {
     // Define function that maps Uint8 [0, 255] to Decibels.
     intensityDataToDb(intensity) {
       return (
-        this.minDecibels +
-        (intensity / 255) * (this.maxDecibels - this.minDecibels)
+        this.$store.state.minDecibels +
+        (intensity / 255) *
+          (this.$store.state.maxDecibels - this.$store.state.minDecibels)
       );
     },
     createChart() {
+      this.increment();
       if (this.chart) this.chart.dispose();
       console.log('create chart');
       // Create chartXY
@@ -147,8 +140,6 @@ export default {
       const ylen = this.spectrogramData.length;
       if (ylen === 1) return;
       const xlen = this.spectrogramData[0].length;
-      console.log(xlen, ylen);
-      const myData = this.spectrogramData;
       // Add a Heatmap to the Chart.
       console.log('add data');
       this.dataSeries = this.chart
@@ -167,7 +158,7 @@ export default {
         .setFillStyle(new PalettedFill({ lut: this.palette }))
         .setWireframeStyle(emptyLine)
         // Use look up table (LUT) to get heatmap intensity value coloring
-        .invalidateIntensityValues(myData)
+        .invalidateIntensityValues(this.spectrogramData)
         .setMouseInteractions(false)
         .setCursorResultTableFormatter((builder, series, dataPoint) =>
           builder
@@ -209,6 +200,13 @@ export default {
           { x: this.selectedTime, y: this.xMax },
         ]);
     },
+    ...mapMutations({
+      increment: 'increment',
+    }),
+    ...mapGetters({
+      getSpectrogramData: 'getSpectrogramData',
+      getNumSpectrograms: 'getNumSpectrograms',
+    }),
   },
   watch: {
     // selectedTime() {

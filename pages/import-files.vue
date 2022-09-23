@@ -43,14 +43,7 @@
 
     <!-- Spectrogram -->
     <div class="plot-holder">
-      <heatmap
-        :spectrogram-data="spectrogramData"
-        :x-max="duration"
-        :y-max="maxFreq"
-        :min-decibels="minDecibels"
-        :max-decibels="maxDecibels"
-        :index="fileSelected"
-      />
+      <heatmap :index="fileSelected" />
     </div>
   </div>
 </template>
@@ -59,7 +52,6 @@
 /**
  * TODO:
  * get correct colormap
- * setup heatmap with responsive x and y max values-DONE
  * figure out if i need 1 or 2 channels of audio
  * setup store so heatmap gets data from store
  * decibel range props this.minDecibels,this.maxDecibels
@@ -67,6 +59,7 @@
  */
 
 import Heatmap from '@/components/heatmap.vue';
+import { mapMutations, mapGetters } from 'vuex';
 // File Upload Ex: https://serversideup.net/uploading-files-vuejs-axios/
 export default {
   components: {
@@ -105,10 +98,6 @@ export default {
     };
   },
   computed: {
-    spectrogramData() {
-      if (this.fileSelected < 0) return [];
-      return this.loadedFileInfo[this.fileSelected].spectrogramData;
-    },
     duration() {
       if (this.fileSelected < 0) return 0;
       return this.loadedFileInfo[this.fileSelected].duration;
@@ -151,7 +140,7 @@ export default {
         formData.append('files[' + i + ']', file);
         //Documentation: https://zellwk.com/blog/async-await-in-loops/
         const v = await this.loadAudioData(i);
-        this.loadedFileInfo[i] = v;
+        this.addSpectrogramData(v);
       }
       this.select(this.files.length - 1);
       this.loading = false;
@@ -182,7 +171,6 @@ export default {
             console.log('decoded');
             resolve(processWaveform(decodedData));
             console.log('processed');
-            // TODO: save processed audio data to store
           });
         };
         request.send();
@@ -231,8 +219,8 @@ export default {
         analyzers[i] = offlineCtx.createAnalyser();
         analyzers[i].smoothingTimeConstant = this.config.smoothingTimeConstant;
         analyzers[i].fftSize = this.config.fftResolution;
-        analyzers[i].maxDecibels = -40;
-        analyzers[i].minDecibels = -100;
+        analyzers[i].maxDecibels = this.$store.state.maxDecibels;
+        analyzers[i].minDecibels = this.$store.state.minDecibels;
         //TODO: figure out what decibel range to use
         //Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/minDecibels
         // Connect the created analyzer to a single channel from the splitter
@@ -291,7 +279,6 @@ export default {
         duration: audioBuffer.duration,
       };
 
-      //TODO: save processed audio data to store
       return this.formatSpectrogram(processed);
     },
     /**
@@ -390,6 +377,9 @@ export default {
       const sound = document.getElementById('audio');
       sound.load();
     },
+    ...mapMutations({
+      addSpectrogramData: 'addSpectrogramData',
+    }),
   },
   watch: {},
 };
