@@ -55,6 +55,7 @@
  * figure out if i need 1 or 2 channels of audio
  * determine this.minDecibels,this.maxDecibels
  * what happens when you remove last file
+ * highlight selected file
  */
 
 import Heatmap from '@/components/heatmap.vue';
@@ -68,7 +69,6 @@ export default {
     return {
       audioCtx: null,
       audioSrc: null,
-      files: [],
       fileSelected: -1,
       loading: false,
       config: {
@@ -97,13 +97,8 @@ export default {
     };
   },
   computed: {
-    duration() {
-      if (this.fileSelected < 0) return 0;
-      return this.loadedFileInfo[this.fileSelected].duration;
-    },
-    maxFreq() {
-      if (this.fileSelected < 0) return 0;
-      return this.loadedFileInfo[this.fileSelected].maxFreq;
+    files() {
+      return this.$store.state.files;
     },
   },
   /*
@@ -114,6 +109,7 @@ export default {
         Adds a file
       */
     addFiles() {
+      console.log('add');
       this.$refs.files.click();
     },
 
@@ -122,10 +118,6 @@ export default {
       */
     async submitFiles() {
       this.loading = true;
-      /*
-          Initialize the form data
-        */
-      let formData = new FormData();
 
       /*
           Iterate over any file sent over appending the files
@@ -135,9 +127,6 @@ export default {
       const numLoaded = this.$store.getters.getNumSpectrograms;
 
       for (var i = numLoaded; i < this.files.length; i++) {
-        let file = this.files[i];
-
-        formData.append('files[' + i + ']', file);
         //Documentation: https://zellwk.com/blog/async-await-in-loops/
         const v = await this.loadAudioData(i);
         this.addSpectrogramData(v);
@@ -351,7 +340,7 @@ export default {
           Adds the uploaded file to the files array
         */
       for (var i = 0; i < uploadedFiles.length; i++) {
-        this.files.push(uploadedFiles[i]);
+        this.addFilesToStore(uploadedFiles[i]);
         this.loadedFileInfo.push({
           maxFreq: 0,
           duration: 0,
@@ -364,7 +353,7 @@ export default {
         Removes a select file the user has uploaded
       */
     removeFile(key) {
-      this.files.splice(key, 1);
+      this.removeFilesFromStore(key);
       if (this.fileSelected === key) {
         if (this.fileSelected !== 0) {
           this.select(this.fileSelected - 1);
@@ -386,6 +375,8 @@ export default {
     },
     ...mapMutations({
       addSpectrogramData: 'addSpectrogramData',
+      addFilesToStore: 'addFilesToStore',
+      removeFilesFromStore: 'removeFilesFromStoreFromStore',
     }),
     ...mapGetters({
       getNumSpectrograms: 'getNumSpectrograms',

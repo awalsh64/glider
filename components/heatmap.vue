@@ -43,7 +43,7 @@ export default {
     },
     index: {
       type: Number,
-      default: -1,
+      default: 0,
     },
   },
   beforeMount() {
@@ -219,6 +219,9 @@ export default {
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM
     this.createChart();
+    if (this.index > -1) {
+      this.addDataToChart();
+    }
     // this.selectedTimeLine = this.setSelectedTime();
   },
   beforeUnmount() {

@@ -6,7 +6,7 @@
           <trajectory :points="gliderDepth" @time="selectedTime = $event" />
         </div>
         <div id="app" style="height: 50vh">
-          <heatmap :selected-time="selectedTime" />
+          <heatmap :selected-time="selectedTime" :index="index" />
         </div>
       </v-card>
     </v-col>
@@ -26,6 +26,7 @@ export default {
   data: () => {
     return {
       selectedTime: 1,
+      index: 0,
     };
   },
   computed: {
