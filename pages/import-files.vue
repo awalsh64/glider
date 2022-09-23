@@ -148,6 +148,7 @@ export default {
         let file = this.files[i];
 
         formData.append('files[' + i + ']', file);
+        //Documentation: https://zellwk.com/blog/async-await-in-loops/
         const v = await this.loadAudioData(i);
         this.loadedFileInfo[i] = v;
       }
