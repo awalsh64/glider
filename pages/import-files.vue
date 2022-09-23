@@ -53,9 +53,8 @@
  * TODO:
  * get correct colormap
  * figure out if i need 1 or 2 channels of audio
- * setup store so heatmap gets data from store
- * decibel range props this.minDecibels,this.maxDecibels
- * when adding files after submitting, only process new files
+ * determine this.minDecibels,this.maxDecibels
+ * what happens when you remove last file
  */
 
 import Heatmap from '@/components/heatmap.vue';
@@ -133,8 +132,9 @@ export default {
           to the form data.
         */
       this.loading = true;
+      const numLoaded = this.$store.getters.getNumSpectrograms;
 
-      for (var i = 0; i < this.files.length; i++) {
+      for (var i = numLoaded; i < this.files.length; i++) {
         let file = this.files[i];
 
         formData.append('files[' + i + ']', file);
@@ -365,6 +365,13 @@ export default {
       */
     removeFile(key) {
       this.files.splice(key, 1);
+      if (this.fileSelected === key) {
+        if (this.fileSelected !== 0) {
+          this.select(this.fileSelected - 1);
+        } else {
+          this.select(0); //TODO: This won't trigger a replot because fileSelected isn't changing
+        }
+      }
     },
     /*
     Select file to display audio
@@ -379,6 +386,9 @@ export default {
     },
     ...mapMutations({
       addSpectrogramData: 'addSpectrogramData',
+    }),
+    ...mapGetters({
+      getNumSpectrograms: 'getNumSpectrograms',
     }),
   },
   watch: {},

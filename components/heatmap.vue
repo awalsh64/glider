@@ -119,7 +119,6 @@ export default {
       );
     },
     createChart() {
-      this.increment();
       if (this.chart) this.chart.dispose();
       console.log('create chart');
       // Create chartXY
@@ -200,9 +199,7 @@ export default {
           { x: this.selectedTime, y: this.xMax },
         ]);
     },
-    ...mapMutations({
-      increment: 'increment',
-    }),
+    ...mapMutations({}),
     ...mapGetters({
       getSpectrogramData: 'getSpectrogramData',
       getNumSpectrograms: 'getNumSpectrograms',
