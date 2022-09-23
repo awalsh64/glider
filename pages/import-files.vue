@@ -49,7 +49,7 @@
         :y-max="maxFreq"
         :min-decibels="minDecibels"
         :max-decibels="maxDecibels"
-        :index="index"
+        :index="fileSelected"
       />
     </div>
   </div>
@@ -64,7 +64,6 @@
  * setup store so heatmap gets data from store
  * decibel range props this.minDecibels,this.maxDecibels
  * when adding files after submitting, only process new files
- * fix indexing issue when loading 1 file
  */
 
 import Heatmap from '@/components/heatmap.vue';
@@ -78,9 +77,8 @@ export default {
       audioCtx: null,
       audioSrc: null,
       files: [],
-      fileSelected: 0,
+      fileSelected: -1,
       loading: false,
-      index: 0,
       config: {
         /**
          * The resolution of the FFT calculations
@@ -108,12 +106,15 @@ export default {
   },
   computed: {
     spectrogramData() {
+      if (this.fileSelected < 0) return [];
       return this.loadedFileInfo[this.fileSelected].spectrogramData;
     },
     duration() {
+      if (this.fileSelected < 0) return 0;
       return this.loadedFileInfo[this.fileSelected].duration;
     },
     maxFreq() {
+      if (this.fileSelected < 0) return 0;
       return this.loadedFileInfo[this.fileSelected].maxFreq;
     },
   },
@@ -152,9 +153,7 @@ export default {
         const v = await this.loadAudioData(i);
         this.loadedFileInfo[i] = v;
       }
-      this.fileSelected = this.files.length - 1;
-      this.index++;
-      console.log('index ', this.index);
+      this.select(this.files.length - 1);
       this.loading = false;
     },
 
@@ -384,19 +383,15 @@ export default {
     Select file to display audio
     */
     select(key) {
+      console.log('select');
       this.fileSelected = key;
-      this.index++;
-      //TODO: replace index with fileSelected but then fileSelected can't start at 0
-    },
-  },
-  watch: {
-    fileSelected() {
       // add sound to audio player
       this.audioSrc = URL.createObjectURL(this.files[this.fileSelected]);
       const sound = document.getElementById('audio');
       sound.load();
     },
   },
+  watch: {},
 };
 </script>
 
