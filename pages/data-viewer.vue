@@ -18,7 +18,7 @@
 import Trajectory from '@/components/chartxy.vue';
 import Heatmap from '@/components/heatmap.vue';
 export default {
-  name: 'Spectrogram',
+  name: 'DataViewer',
   components: {
     Trajectory,
     Heatmap,
@@ -31,7 +31,7 @@ export default {
   },
   computed: {
     gliderDepth() {
-      return new Array(1000).fill(1).map((v, i) => {
+      return new Array(1000).fill(1).map((_, i) => {
         return {
           x: i,
           y: Math.sin((0.001 * (i * 180)) / Math.PI) * 50 + 51,

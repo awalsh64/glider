@@ -1,5 +1,9 @@
 <template>
-  <img class="vuetify-logo" alt="Vuetify Logo" :src="`${$config.BASE_URL}/vuetify-logo.svg`"/>
+  <img
+    class="vuetify-logo"
+    alt="Vuetify Logo"
+    :src="`${$config.BASE_URL}/vuetify-logo.svg`"
+  />
 </template>
 
 <style>

@@ -4,13 +4,12 @@
 
 <script>
 import { mapMutations, mapGetters } from 'vuex';
-//TODO: axis.addBand for current song playing location
+// TODO: axis.addBand for current song playing location
 // Extract required parts from LightningChartJS.
 import {
   lightningChart,
   PalettedFill,
   LUT,
-  ColorRGBA,
   ColorHSV,
   SolidFill,
   ColorHEX,
@@ -20,6 +19,17 @@ import {
 } from '@arction/lcjs';
 
 export default {
+  name: 'HeatmapChart',
+  props: {
+    selectedTime: {
+      type: Number,
+      default: 1,
+    },
+    index: {
+      type: Number,
+      default: 0,
+    },
+  },
   data() {
     // Add the chart to the data in a way that Vue will not attach it's observers to it.
     // If the chart variable would be added in the return object, Vue would attach the observers and
@@ -36,35 +46,21 @@ export default {
       dataSeries: undefined,
     };
   },
-  props: {
-    selectedTime: {
-      type: Number,
-      default: 1,
-    },
-    index: {
-      type: Number,
-      default: 0,
-    },
-  },
-  beforeMount() {
-    // Generate random ID to us as the containerId for the chart and the target div id
-    this.chartId = Math.trunc(Math.random() * 1000000);
-  },
   computed: {
     spectrogramData() {
-      if (this.$store.getters.getNumSpectrograms === 0) return []; //init as blank chart
+      if (this.$store.getters.getNumSpectrograms === 0) return []; // init as blank chart
       return this.$store.getters.getSpectrogramData(this.index).spectrogramData;
     },
     xMax() {
-      if (this.$store.getters.getNumSpectrograms === 0) return 100; //init as blank chart
+      if (this.$store.getters.getNumSpectrograms === 0) return 100; // init as blank chart
       return this.$store.getters.getSpectrogramData(this.index).duration;
     },
     yMax() {
-      if (this.$store.getters.getNumSpectrograms === 0) return 100; //init as blank chart
+      if (this.$store.getters.getNumSpectrograms === 0) return 100; // init as blank chart
       return this.$store.getters.getSpectrogramData(this.index).maxFreq;
     },
     palette() {
-      //slow
+      // slow
       console.log('LUT');
       return new LUT({
         units: 'dB',
@@ -109,6 +105,33 @@ export default {
       });
     },
   },
+  watch: {
+    // selectedTime() {
+    // this.selectedTimeLine.dispose();
+    // this.selectedTimeLine = this.setSelectedTime();
+    // },
+    index() {
+      this.createChart();
+      this.addDataToChart();
+    },
+  },
+  beforeMount() {
+    // Generate random ID to us as the containerId for the chart and the target div id
+    this.chartId = Math.trunc(Math.random() * 1000000);
+  },
+  mounted() {
+    // Chart can only be created when the component has mounted the DOM because
+    // the chart needs the element with specified containerId to exist in the DOM
+    this.createChart();
+    if (this.index > -1) {
+      this.addDataToChart();
+    }
+    // this.selectedTimeLine = this.setSelectedTime();
+  },
+  beforeUnmount() {
+    // "dispose" should be called when the component is unmounted to free all the resources used by the chart
+    this.chart.dispose();
+  },
   methods: {
     // Define function that maps Uint8 [0, 255] to Decibels.
     intensityDataToDb(intensity) {
@@ -131,7 +154,7 @@ export default {
         .setTitle('Spectrogram')
         .setMouseInteractionWheelZoom(false);
 
-      //set axes titles
+      // set axes titles
       this.chart.getDefaultAxisX().setTitle('Time (s)');
       this.chart.getDefaultAxisY().setTitle('Frequency (Hz)');
     },
@@ -204,29 +227,6 @@ export default {
       getSpectrogramData: 'getSpectrogramData',
       getNumSpectrograms: 'getNumSpectrograms',
     }),
-  },
-  watch: {
-    // selectedTime() {
-    // this.selectedTimeLine.dispose();
-    // this.selectedTimeLine = this.setSelectedTime();
-    // },
-    index() {
-      this.createChart();
-      this.addDataToChart();
-    },
-  },
-  mounted() {
-    // Chart can only be created when the component has mounted the DOM because
-    // the chart needs the element with specified containerId to exist in the DOM
-    this.createChart();
-    if (this.index > -1) {
-      this.addDataToChart();
-    }
-    // this.selectedTimeLine = this.setSelectedTime();
-  },
-  beforeUnmount() {
-    // "dispose" should be called when the component is unmounted to free all the resources used by the chart
-    this.chart.dispose();
   },
 };
 </script>
