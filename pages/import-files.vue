@@ -29,6 +29,8 @@
       <v-btn v-if="!loading" @click="addFiles()">Add Files</v-btn>
       <!-- Submit -->
       <v-btn v-if="!loading" @click="submitFiles()">Submit</v-btn>
+      <!-- Load NetCDF-->
+      <v-btn v-if="!loading" @click="loadNetCDF()">Load NetCDF</v-btn>
       <!-- Audio Player -->
       <audio id="audio" controls>
         <source :src="audioSrc" type="audio/wav" />
@@ -60,6 +62,7 @@
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
 // Web Audio Documentation: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-decodeaudiodata
 import { mapMutations, mapGetters } from 'vuex';
+import { NetCDFReader } from 'netcdfjs';
 import Heatmap from '@/components/heatmap.vue';
 // File Upload Ex: https://serversideup.net/uploading-files-vuejs-axios/
 export default {
@@ -114,12 +117,33 @@ export default {
       this.$refs.files.click();
     },
 
+    loadNetCDF() {
+      const file = URL.createObjectURL(this.files[0]);
+      // const reader2 = new NetCDFReader();
+      console.log(file);
+
+      return new Promise(function (resolve) {
+        const request = new XMLHttpRequest();
+        request.open('GET', file, true);
+        // Documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
+        request.responseType = 'arraybuffer';
+        console.log(request);
+        request.onload = () => {
+          console.log('loaded');
+          // wait for file to load using promise
+          const data = request.response;
+          const reader = new NetCDFReader(data);
+          reader.getDataVariable('latitude');
+          console.log(reader.getDataVariable('latitude'));
+        };
+        request.send();
+      });
+    },
+
     /*
         Submits files to the server
       */
     async submitFiles() {
-      this.loading = true;
-
       /*
           Iterate over any file sent over appending the files
           to the form data.
