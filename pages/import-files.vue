@@ -53,11 +53,14 @@
  * TODO:
  * get correct colormap
  * figure out if i need 1 or 2 channels of audio
- * determine this.minDecibels,this.maxDecibels
+ * determine this.minDecibels,this.maxDecibels, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/maxDecibels
  * what happens when you remove last file
  * highlight selected file
+ * upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
  */
 
+//Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
+//Web Audio Documentation: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-decodeaudiodata
 import Heatmap from '@/components/heatmap.vue';
 import { mapMutations, mapGetters } from 'vuex';
 // File Upload Ex: https://serversideup.net/uploading-files-vuejs-axios/
@@ -149,11 +152,12 @@ export default {
       return new Promise(function (resolve) {
         const request = new XMLHttpRequest();
         request.open('GET', myAudio, true);
+        // Documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
         request.responseType = 'arraybuffer';
         console.log(request);
         request.onload = () => {
           console.log('loaded');
-          // wait for file to load
+          // wait for file to load using promise
           let audioData = request.response;
           audioCtx.decodeAudioData(audioData).then((decodedData) => {
             // use the decoded data here
@@ -230,6 +234,7 @@ export default {
         1
       );
       let offset = 0;
+      // Documentation https://developer.mozilla.org/en-US/docs/Web/API/ScriptProcessorNode/audioprocess_event
       processor.onaudioprocess = (ev) => {
         // Run FFT for each channel
         /////////slow
@@ -369,6 +374,7 @@ export default {
       console.log('select');
       this.fileSelected = key;
       // add sound to audio player
+      // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL
       this.audioSrc = URL.createObjectURL(this.files[this.fileSelected]);
       const sound = document.getElementById('audio');
       sound.load();
