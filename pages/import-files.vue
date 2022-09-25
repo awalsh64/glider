@@ -49,12 +49,12 @@
 /**
  * TODO:
  * get correct colormap
- * figure out if i need 1 or 2 channels of audio
  * determine this.minDecibels,this.maxDecibels, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/maxDecibels
  * what happens when you remove last file
  * highlight selected file
  * upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
  * drag and drop files
+ * time scrolling line with audio player
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -179,7 +179,6 @@ export default {
       // The OfflineAudioContext can be used to process a audio file as fast as possible.
       // Normal AudioContext would process the file at the speed of playback.
       // const audioSampleRate = 128000; // 128kHz
-      console.log('offline context');
       const offlineCtx = new OfflineAudioContext(
         audioBuffer.numberOfChannels,
         audioBuffer.length,
@@ -189,40 +188,31 @@ export default {
       const source = offlineCtx.createBufferSource();
       // Set the buffer to the audio buffer we are using
       source.buffer = audioBuffer;
-      // Set source channel count to the audio buffer channel count, if this wasn't set, the source would default to 2 channels.
-      source.channelCount = audioBuffer.numberOfChannels;
 
-      // We want to create spectrogram for each channel in the buffer, so we need to separate the channels to separate outputs.
-      const splitter = offlineCtx.createChannelSplitter(source.channelCount);
       // Create a analyzer node for the full context
       const generalAnalyzer = offlineCtx.createAnalyser();
       generalAnalyzer.fftSize = this.config.fftResolution;
       generalAnalyzer.smoothingTimeConstant = this.config.smoothingTimeConstant;
 
-      // Prepare buffers and analyzers for each channel
-      const channelFFtDataBuffers = [];
-      const channelDbRanges = [];
-      const analyzers = [];
-      for (let i = 0; i < source.channelCount; i += 1) {
-        channelFFtDataBuffers[i] = new Uint8Array(
-          (audioBuffer.length / this.config.processorBufferSize) *
-            (this.config.fftResolution / 2)
-        );
-        // Setup analyzer for this channel
-        analyzers[i] = offlineCtx.createAnalyser();
-        analyzers[i].smoothingTimeConstant = this.config.smoothingTimeConstant;
-        analyzers[i].fftSize = this.config.fftResolution;
-        analyzers[i].maxDecibels = this.$store.state.maxDecibels;
-        analyzers[i].minDecibels = this.$store.state.minDecibels;
-        // TODO: figure out what decibel range to use
-        // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/minDecibels
-        // Connect the created analyzer to a single channel from the splitter
-        splitter.connect(analyzers[i], i);
-        channelDbRanges.push({
-          minDecibels: analyzers[i].minDecibels,
-          maxDecibels: analyzers[i].maxDecibels,
-        });
-      }
+      // Prepare buffer and analyzer
+      const channelFFtDataBuffer = new Uint8Array(
+        (audioBuffer.length / this.config.processorBufferSize) *
+          (this.config.fftResolution / 2)
+      );
+      // Setup analyzer for this channel
+      const analyzer = offlineCtx.createAnalyser();
+      analyzer.smoothingTimeConstant = this.config.smoothingTimeConstant;
+      analyzer.fftSize = this.config.fftResolution;
+      analyzer.maxDecibels = this.$store.state.maxDecibels;
+      analyzer.minDecibels = this.$store.state.minDecibels;
+      // TODO: figure out what decibel range to use
+      // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/minDecibels
+      // Connect the created analyzer to the source
+      source.connect(analyzer);
+      const channelDbRanges = {
+        minDecibels: analyzer.minDecibels,
+        maxDecibels: analyzer.maxDecibels,
+      };
 
       // Script processor is used to process all of the audio data in fftSize sized blocks
       // Script processor is a deprecated API but the replacement APIs have really poor browser support
@@ -238,22 +228,18 @@ export default {
       processor.onaudioprocess = () => {
         // Run FFT for each channel
         /// //////slow
-        for (let i = 0; i < source.channelCount; i += 1) {
-          const freqData = new Uint8Array(
-            channelFFtDataBuffers[i].buffer,
-            offset,
-            analyzers[i].frequencyBinCount
-          );
-          analyzers[i].getByteFrequencyData(freqData);
-        }
+        const freqData = new Uint8Array(
+          channelFFtDataBuffer.buffer,
+          offset,
+          analyzer.frequencyBinCount
+        );
+        analyzer.getByteFrequencyData(freqData);
         offset += generalAnalyzer.frequencyBinCount;
       };
       // Connect source buffer to correct nodes,
       // source feeds to:
-      // splitter, to separate the channels
       // processor, to do the actual processing
       // generalAnalyzer, to get collective information
-      source.connect(splitter);
       source.connect(processor);
       processor.connect(offlineCtx.destination);
       source.connect(generalAnalyzer);
@@ -263,7 +249,7 @@ export default {
       // Process the audio buffer when loaded
       await offlineCtx.startRendering();
       const processed = {
-        channels: channelFFtDataBuffers,
+        channel: channelFFtDataBuffer,
         channelDbRanges,
         stride: this.config.fftResolution / 2,
         tickCount: Math.ceil(
@@ -312,10 +298,10 @@ export default {
      * Setup data for the chart
      * */
     formatSpectrogram(data) {
-      // Create channels and set data for each channel
+      // Set data for each channel
       // Setup the data for the chart
       const remappedData = this.remapDataToTwoDimensionalMatrix(
-        data.channels[0],
+        data.channel,
         data.stride,
         data.tickCount
       )
@@ -325,8 +311,8 @@ export default {
       // //TODO: duration should be different units than seconds so you don't have to round
       // this.duration = Math.floor(data.duration);
       // this.maxFreq = Math.ceil(data.maxFreq / 2); //Use half of the fft data range
-      this.minDecibels = data.channelDbRanges[0].minDecibels;
-      this.maxDecibels = data.channelDbRanges[0].maxDecibels;
+      this.minDecibels = data.channelDbRanges.minDecibels;
+      this.maxDecibels = data.channelDbRanges.maxDecibels;
       return {
         duration: Math.floor(data.duration),
         maxFreq: Math.ceil(data.maxFreq / 2),
