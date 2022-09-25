@@ -131,6 +131,7 @@ export default {
 
       for (var i = numLoaded; i < this.files.length; i++) {
         //Documentation: https://zellwk.com/blog/async-await-in-loops/
+        // wait for async function
         const v = await this.loadAudioData(i);
         this.addSpectrogramData(v);
       }
