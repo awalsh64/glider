@@ -1,4 +1,7 @@
 # glider
+## Amanda Walsh 9/5/2022
+# This app can be access from:
+https://awalsh64.github.io/glider/
 
 ## Build Setup
 
@@ -15,7 +18,14 @@ $ npm run start
 
 # generate static project
 $ npm run generate
+
+# deploy build to github pages
+# Reference: https://elpan.dev/en/deploy-nuxt-js-on-github-pages
+$ npm run deploy
 ```
+
+## This project was created using NuxtJS
+https://nuxtjs.org/docs/get-started/installation
 
 For detailed explanation on how things work, check out the [documentation](https://nuxtjs.org).
 
