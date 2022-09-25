@@ -25,14 +25,12 @@ export const mutations = {
   addSpectrogramData(state, data) {
     state.spectrogramData.push(data);
   },
-  removeSpectrogramData(state, ind) {
-    state.spectrogramData.splice(ind, 1);
-  },
   addFilesToStore(state, file) {
     state.files.push(file);
   },
   removeFilesFromStore(state, ind) {
     state.files.splice(ind, 1);
+    state.spectrogramData.splice(ind, 1);
   },
 };
 
