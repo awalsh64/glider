@@ -3,7 +3,8 @@ export const state = () => ({
   spectrogramData: [],
   minDecibels: -100,
   maxDecibels: -40,
-  files: [],
+  audioFiles: [],
+  ncFiles: [],
 });
 
 export const getters = {
@@ -25,12 +26,20 @@ export const mutations = {
   addSpectrogramData(state, data) {
     state.spectrogramData.push(data);
   },
-  addFilesToStore(state, file) {
-    state.files.push(file);
+  addAudioFilesToStore(state, file) {
+    state.audioFiles.push(file);
+    console.log(state.audioFiles);
   },
-  removeFilesFromStore(state, ind) {
-    state.files.splice(ind, 1);
+  removeAudioFilesFromStore(state, ind) {
+    state.audioFiles.splice(ind, 1);
     state.spectrogramData.splice(ind, 1);
+  },
+  addNCFilesToStore(state, file) {
+    state.ncFiles.push(file);
+  },
+  removeNCFilesFromStore(state, ind) {
+    state.ncFiles.splice(ind, 1);
+    // remove stored nc data
   },
 };
 
