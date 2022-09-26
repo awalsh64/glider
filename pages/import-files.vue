@@ -1,5 +1,10 @@
 <template>
   <div class="container">
+    <p>
+      Add .wav files to the Audio Files list, select Process Files, then Select
+      a file to view the Spectrogram.
+    </p>
+    <p>Add NetCDF files at the bottom to view the parameters.</p>
     <load-files
       :add-files-to-store="addAudioFilesToStore"
       :remove-files-from-store="removeAudioFilesFromStore"

@@ -47,16 +47,19 @@ export default {
     };
   },
   computed: {
+    numSpectrograms() {
+      return this.$store.getters.getNumSpectrograms;
+    },
     spectrogramData() {
-      if (this.$store.getters.getNumSpectrograms === 0) return []; // init as blank chart
+      if (this.numSpectrograms === 0) return []; // init as blank chart
       return this.$store.getters.getSpectrogramData(this.index).spectrogramData;
     },
     xMax() {
-      if (this.$store.getters.getNumSpectrograms === 0) return 100; // init as blank chart
+      if (this.numSpectrograms === 0) return 100; // init as blank chart
       return this.$store.getters.getSpectrogramData(this.index).duration;
     },
     yMax() {
-      if (this.$store.getters.getNumSpectrograms === 0) return 100; // init as blank chart
+      if (this.numSpectrograms === 0) return 100; // init as blank chart
       return this.$store.getters.getSpectrogramData(this.index).maxFreq;
     },
     palette() {
@@ -111,6 +114,7 @@ export default {
     // this.selectedTimeLine = this.setSelectedTime();
     // },
     index() {
+      if (this.numSpectrograms < this.index + 1) return;
       this.createChart();
       this.addDataToChart();
     },
