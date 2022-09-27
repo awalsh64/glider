@@ -38,7 +38,21 @@
       :hide-buttons="loading"
     />
     <!-- Load NetCDF-->
-    <v-btn v-if="!loading" @click="loadNetCDF()">Read NetCDF</v-btn>
+    <v-btn v-if="!loading" @click="readNetCDF()">Read NetCDF</v-btn>
+    <div>
+      <p>Select a Variable</p>
+      <div class="variable-holder">
+        <div v-for="(variable, key) in variables" :key="key">
+          <v-btn color="purple" @click="selectVariable(key)">{{
+            variable.name
+          }}</v-btn>
+        </div>
+      </div>
+      <div class="variable-holder">
+        <p>Selected Variable:</p>
+        {{ selectedVariable }}
+      </div>
+    </div>
   </div>
 </template>
 
@@ -73,6 +87,7 @@ export default {
       audioSrc: null,
       fileSelected: -1,
       ncFileSelected: -1,
+      selectedVariable: null,
       loading: false,
       config: {
         /**
@@ -96,6 +111,7 @@ export default {
       },
       minDecibels: 0,
       maxDecibels: 0,
+      variables: [],
     };
   },
   computed: {
@@ -119,24 +135,48 @@ export default {
     /**
      * Read Net CDF files
      */
-    loadNetCDF() {
-      const file = URL.createObjectURL(this.ncFiles[0]);
+    async readNetCDF() {
+      for (let i = 0; i < this.ncFiles.length; i++) {
+        await this.getVariables(i).then((v) => {
+          this.addNCDataToStore(v);
+        });
+      }
+      this.variables = this.$store.getters.getNCData(
+        this.$store.getters.getNumNCFiles - 1
+      ).header.variables;
+      this.ncFileSelected = this.$store.getters.getNumNCFiles - 1;
+    },
+
+    /**
+     * Return all variables in NetCDF file
+     */
+    getVariables(index) {
+      const file = URL.createObjectURL(this.ncFiles[index]);
       return new Promise(function (resolve) {
         const request = new XMLHttpRequest();
         request.open('GET', file, true);
         // Documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
         request.responseType = 'arraybuffer';
-        console.log(request);
         request.onload = () => {
-          console.log('loaded');
           // wait for file to load using promise
           const data = request.response;
           const reader = new NetCDFReader(data);
-          reader.getDataVariable('latitude');
-          console.log(reader.getDataVariable('latitude'));
+          resolve(reader);
         };
         request.send();
       });
+    },
+
+    selectVariable(index) {
+      const ncData = this.$store.getters.getNCData(this.ncFileSelected);
+      console.log(index);
+      console.log(ncData.header.variables[index].name);
+      const name = `${ncData.header.variables[index].name}`;
+      this.readVariable({
+        ind: this.ncFileSelected,
+        name,
+      });
+      this.selectedVariable = this.$store.state.readVar.variable;
     },
 
     /*
@@ -342,16 +382,15 @@ export default {
         spectrogramData: remappedData,
       };
     },
-    ...mapMutations({
-      addSpectrogramData: 'addSpectrogramData',
-      addAudioFilesToStore: 'addAudioFilesToStore',
-      removeAudioFilesFromStore: 'removeAudioFilesFromStore',
-      addNCFilesToStore: 'addNCFilesToStore',
-      removeNCFilesFromStore: 'removeNCFilesFromStore',
-    }),
-    ...mapGetters({
-      getNumSpectrograms: 'getNumSpectrograms',
-    }),
+    ...mapMutations([
+      'addSpectrogramData',
+      'addAudioFilesToStore',
+      'removeAudioFilesFromStore',
+      'addNCFilesToStore',
+      'removeNCFilesFromStore',
+      'addNCDataToStore',
+      'readVariable',
+    ]),
   },
 };
 </script>
@@ -376,5 +415,12 @@ span.select-file {
 
 .plot-holder {
   height: 50vh;
+}
+
+.variable-holder {
+  height: 40vh;
+  width: 42vw;
+  overflow-y: scroll;
+  float: left;
 }
 </style>

@@ -5,6 +5,8 @@ export const state = () => ({
   maxDecibels: -40,
   audioFiles: [],
   ncFiles: [],
+  ncData: [],
+  readVar: { name: '', variable: null },
 });
 
 export const getters = {
@@ -16,6 +18,12 @@ export const getters = {
   },
   getNumSpectrograms(state) {
     return state.spectrogramData.length;
+  },
+  getNumNCFiles(state) {
+    return state.ncFiles.length;
+  },
+  getNCData: (state) => (ind) => {
+    return state.ncData[ind];
   },
 };
 
@@ -39,7 +47,16 @@ export const mutations = {
   },
   removeNCFilesFromStore(state, ind) {
     state.ncFiles.splice(ind, 1);
-    // remove stored nc data
+    state.ncData.splice(ind, 1);
+  },
+  addNCDataToStore(state, data) {
+    state.ncData.push(data);
+  },
+  readVariable(state, props) {
+    state.readVar.variable = state.ncData[props.ind].getDataVariable(
+      props.name
+    );
+    state.readVar.name = props.name;
   },
 };
 
