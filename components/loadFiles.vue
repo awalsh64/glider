@@ -16,7 +16,10 @@
     <div>
       <div v-for="(file, key) in files" :key="key">
         {{ file.name }}
-        <v-btn v-if="!hideButtons" class="select-file" @click="select(key)"
+        <v-btn
+          v-if="!hideButtons && showSelect > key"
+          class="select-file"
+          @click="select(key)"
           >Select</v-btn
         >
         <v-btn v-if="!hideButtons" class="remove-file" @click="removeFile(key)"
@@ -49,6 +52,12 @@ export default {
     hideButtons: {
       type: Boolean,
       default: false,
+    },
+    showSelect: {
+      type: Array,
+      default: () => {
+        return [];
+      },
     },
   },
   data() {

@@ -11,6 +11,7 @@
       :file-selected.sync="fileSelected"
       file-type="Audio"
       :hide-buttons="loading"
+      :show-select="numLoaded"
     />
     <div>
       <!-- Submit -->
@@ -36,6 +37,7 @@
       :file-selected.sync="ncFileSelected"
       file-type="NetCDF"
       :hide-buttons="loading"
+      :show-select="numNCLoaded"
     />
     <!-- Load NetCDF-->
     <v-btn v-if="!loading" @click="readNetCDF()">Read NetCDF</v-btn>
@@ -121,6 +123,12 @@ export default {
     ncFiles() {
       return this.$store.state.ncFiles;
     },
+    numLoaded() {
+      return this.$store.getters.getNumSpectrograms;
+    },
+    numNCLoaded() {
+      return this.$store.state.ncData.length;
+    },
   },
   watch: {
     fileSelected() {
@@ -188,9 +196,8 @@ export default {
           to the form data.
         */
       this.loading = true;
-      const numLoaded = this.$store.getters.getNumSpectrograms;
 
-      for (let i = numLoaded; i < this.audioFiles.length; i++) {
+      for (let i = this.numLoaded; i < this.audioFiles.length; i++) {
         // Documentation: https://zellwk.com/blog/async-await-in-loops/
         // wait for async function
         await this.loadAudioData(i).then((v) => {
