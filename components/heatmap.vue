@@ -3,7 +3,6 @@
 </template>
 
 <script>
-import { mapMutations, mapGetters } from 'vuex';
 // TODO: axis.addBand for current song playing location
 // Extract required parts from LightningChartJS.
 import {
@@ -48,7 +47,7 @@ export default {
   },
   computed: {
     numSpectrograms() {
-      return this.getNumSpectrograms;
+      return this.$store.getters.getNumSpectrograms;
     },
     spectrogramData() {
       if (this.numSpectrograms === 0) return []; // init as blank chart
@@ -226,8 +225,6 @@ export default {
           { x: this.selectedTime, y: this.xMax },
         ]);
     },
-    ...mapMutations({}),
-    ...mapGetters(['getNumSpectrograms']),
   },
 };
 </script>
