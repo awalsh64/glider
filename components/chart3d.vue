@@ -26,6 +26,16 @@ export default {
     // Generate random ID to us as the containerId for the chart and the target div id
     this.chartId = Math.trunc(Math.random() * 1000000);
   },
+  mounted() {
+    // Chart can only be created when the component has mounted the DOM because
+    // the chart needs the element with specified containerId to exist in the DOM
+    this.create3DChart();
+  },
+  beforeUnmount() {
+    // "dispose" should be called when the component is unmounted to free all the resources used by the chart
+    this.chart.dispose();
+    this.chart3D.dispose();
+  },
   methods: {
     createChart() {
       // Create chartXY
@@ -48,21 +58,11 @@ export default {
         .Chart3D({ container: `${this.chartId}` })
         .setCameraLocation({ x: 0, y: 0, z: 5 });
 
-      //get x (time) location of mouse
+      // get x (time) location of mouse
       this.series = this.chart3D.addLineSeries();
       // Multiple points at once.
       this.series.add(this.points);
     },
-  },
-  mounted() {
-    // Chart can only be created when the component has mounted the DOM because
-    // the chart needs the element with specified containerId to exist in the DOM
-    this.create3DChart();
-  },
-  beforeUnmount() {
-    // "dispose" should be called when the component is unmounted to free all the resources used by the chart
-    this.chart.dispose();
-    this.chart3D.dispose();
   },
 };
 </script>

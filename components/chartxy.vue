@@ -11,7 +11,7 @@ import {
 } from '@arction/lcjs';
 
 export default {
-  name: 'Trajectory',
+  name: 'TrajectoryChart',
   props: {
     points: {
       required: true,
@@ -33,6 +33,16 @@ export default {
     // Generate random ID to us as the containerId for the chart and the target div id
     this.chartId = Math.trunc(Math.random() * 1000000);
   },
+
+  mounted() {
+    // Chart can only be created when the component has mounted the DOM because
+    // the chart needs the element with specified containerId to exist in the DOM
+    this.createChart();
+  },
+  beforeUnmount() {
+    // "dispose" should be called when the component is unmounted to free all the resources used by the chart
+    this.chart.dispose();
+  },
   methods: {
     createChart() {
       // Create chartXY
@@ -43,7 +53,7 @@ export default {
         .setTitle('Glider Trajectory')
         .setMouseInteractionWheelZoom(false);
 
-      //set axes titles
+      // set axes titles
       this.chart.getDefaultAxisX().setTitle('Time (s)');
       this.chart.getDefaultAxisY().setTitle('Depth (ft)');
 
@@ -90,16 +100,6 @@ export default {
           { x: this.selectedTime, y: 100 },
         ]);
     },
-  },
-
-  mounted() {
-    // Chart can only be created when the component has mounted the DOM because
-    // the chart needs the element with specified containerId to exist in the DOM
-    this.createChart();
-  },
-  beforeUnmount() {
-    // "dispose" should be called when the component is unmounted to free all the resources used by the chart
-    this.chart.dispose();
   },
 };
 </script>
