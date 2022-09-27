@@ -48,7 +48,7 @@ export default {
   },
   computed: {
     numSpectrograms() {
-      return this.$store.getters.getNumSpectrograms;
+      return this.getNumSpectrograms;
     },
     spectrogramData() {
       if (this.numSpectrograms === 0) return []; // init as blank chart
@@ -227,10 +227,7 @@ export default {
         ]);
     },
     ...mapMutations({}),
-    ...mapGetters({
-      getSpectrogramData: 'getSpectrogramData',
-      getNumSpectrograms: 'getNumSpectrograms',
-    }),
+    ...mapGetters(['getNumSpectrograms']),
   },
 };
 </script>
