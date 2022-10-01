@@ -1,8 +1,8 @@
 export const state = () => ({
   counter: 0,
   spectrogramData: [],
-  minDecibels: -100,
-  maxDecibels: -40,
+  minDecibels: -150,
+  maxDecibels: -60,
   audioFiles: [],
   ncFiles: [],
   ncData: [],
