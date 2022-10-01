@@ -315,9 +315,15 @@ export default {
           offset,
           analyzer.frequencyBinCount
         );
+        analyzer.getByteFrequencyData(freqData);
         // TODO: change getByteFrequencyData to getFloatFrequencyData for better precision, need to fix remap
         // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/getFloatFrequencyData
-        analyzer.getByteFrequencyData(freqData);
+        // const freqArrayData = new Float32Array(
+        //   channelFFtDataBuffer.buffer,
+        //   offset,
+        //   analyzer.frequencyBinCount
+        // );
+        // analyzer.getFloatFrequencyData(freqArrayData);
         offset += generalAnalyzer.frequencyBinCount;
       };
       // Connect source buffer to correct nodes,
