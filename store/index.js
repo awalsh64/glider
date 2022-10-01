@@ -36,7 +36,6 @@ export const mutations = {
   },
   addAudioFilesToStore(state, file) {
     state.audioFiles.push(file);
-    console.log(state.audioFiles);
   },
   removeAudioFilesFromStore(state, ind) {
     state.audioFiles.splice(ind, 1);

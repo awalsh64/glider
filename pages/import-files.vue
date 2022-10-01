@@ -69,6 +69,7 @@
  * drag and drop files
  * time scrolling line with audio player
  * hide select button before processed
+ * Make config parameters adjustable by user
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -95,17 +96,26 @@ export default {
         /**
          * The resolution of the FFT calculations
          * Higher value means higher resolution decibel domain.
+         * 4096 gives freq res of 31-32Hz
+         * 8192 gives 15-16Hz
          */
         fftResolution: 4096,
         /**
          * Smoothing value for FFT calculations
          */
-        smoothingTimeConstant: 0.1,
+        smoothingTimeConstant: 0,
         /**
          * The size of processing buffer,
          * determines how often FFT is run
+         * 256 gives time resolution of 0.002s
+         * 2048 gives time res of 0.016s
          */
         processorBufferSize: 2048,
+        /**
+         * sampling rate for audio data in Hz
+         * this should match the recorded sample rate of the wav file
+         */
+        sampleRate: 128000,
       },
       resolution: {
         x: 1000,
@@ -137,6 +147,8 @@ export default {
       this.audioSrc = URL.createObjectURL(this.audioFiles[this.fileSelected]);
       const sound = document.getElementById('audio');
       sound.load();
+      // const audioCtx = new AudioContext();
+      // const source = audioCtx.createMediaElementSource(sound);
     },
   },
   methods: {
@@ -210,7 +222,7 @@ export default {
 
     loadAudioData(index) {
       console.log('load ', index);
-      const audioCtx = new AudioContext();
+      const audioCtx = new AudioContext({ sampleRate: this.config.sampleRate });
       const processWaveform = this.processWaveform;
 
       // create URL to reference imported audio file
@@ -224,7 +236,6 @@ export default {
         request.open('GET', myAudio, true);
         // Documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
         request.responseType = 'arraybuffer';
-        console.log(request);
         request.onload = () => {
           console.log('loaded');
           // wait for file to load using promise
@@ -248,7 +259,6 @@ export default {
       // Create a new OfflineAudioContext with information from the pre-created audioBuffer
       // The OfflineAudioContext can be used to process a audio file as fast as possible.
       // Normal AudioContext would process the file at the speed of playback.
-      // const audioSampleRate = 128000; // 128kHz
       const offlineCtx = new OfflineAudioContext(
         audioBuffer.numberOfChannels,
         audioBuffer.length,
@@ -265,10 +275,12 @@ export default {
       generalAnalyzer.smoothingTimeConstant = this.config.smoothingTimeConstant;
 
       // Prepare buffer and analyzer
+      // this is the length of the audio buffer if the processorBufferSize is half the fftResolution
       const channelFFtDataBuffer = new Uint8Array(
         (audioBuffer.length / this.config.processorBufferSize) *
           (this.config.fftResolution / 2)
       );
+
       // Setup analyzer for this channel
       const analyzer = offlineCtx.createAnalyser();
       analyzer.smoothingTimeConstant = this.config.smoothingTimeConstant;
@@ -303,6 +315,8 @@ export default {
           offset,
           analyzer.frequencyBinCount
         );
+        // TODO: change getByteFrequencyData to getFloatFrequencyData for better precision, need to fix remap
+        // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/getFloatFrequencyData
         analyzer.getByteFrequencyData(freqData);
         offset += generalAnalyzer.frequencyBinCount;
       };
@@ -385,7 +399,7 @@ export default {
       this.maxDecibels = data.channelDbRanges.maxDecibels;
       return {
         duration: Math.floor(data.duration),
-        maxFreq: Math.ceil(data.maxFreq / 2),
+        maxFreq: Math.ceil(data.maxFreq),
         spectrogramData: remappedData,
       };
     },

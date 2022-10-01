@@ -54,10 +54,8 @@ export default {
       default: false,
     },
     showSelect: {
-      type: Array,
-      default: () => {
-        return [];
-      },
+      type: Number,
+      default: 0,
     },
   },
   data() {
