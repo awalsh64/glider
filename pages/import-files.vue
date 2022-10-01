@@ -62,7 +62,8 @@
 /**
  * TODO:
  * get correct colormap
- * determine this.minDecibels,this.maxDecibels, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/maxDecibels
+ * DONE-determine this.minDecibels,this.maxDecibels, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/maxDecibels
+ * make heatmap range (decibel range) user prop
  * what happens when you remove last file
  * highlight selected file
  * upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
@@ -70,6 +71,8 @@
  * time scrolling line with audio player
  * hide select button before processed
  * Make config parameters adjustable by user
+ * change getByteFrequencyData to getFloatFrequencyData if better precision needed, need to fix array remap
+ * duration should be different units than seconds so you don't have to round
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
