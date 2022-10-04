@@ -96,9 +96,9 @@ export default {
 
       // Adds the uploaded file to the files array
       for (let i = 0; i < uploadedFiles.length; i++) {
-        this.addFilesToStore(uploadedFiles[i]);
         this.files.push(uploadedFiles[i]);
       }
+      this.addFilesToStore(this.files);
     },
   },
 };

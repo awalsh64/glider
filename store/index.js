@@ -35,15 +35,15 @@ export const mutations = {
   addSpectrogramData(state, data) {
     state.spectrogramData.push(data);
   },
-  addAudioFilesToStore(state, file) {
-    state.audioFiles.push(file);
+  addAudioFilesToStore(state, files) {
+    state.audioFiles = state.audioFiles.concat(files);
   },
   removeAudioFilesFromStore(state, ind) {
     state.audioFiles.splice(ind, 1);
     state.spectrogramData.splice(ind, 1);
   },
-  addNCFilesToStore(state, file) {
-    state.ncFiles.push(file);
+  addNCFilesToStore(state, files) {
+    state.ncFiles = state.ncFiles.concat(files);
   },
   removeNCFilesFromStore(state, ind) {
     state.ncFiles.splice(ind, 1);

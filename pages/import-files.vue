@@ -1,10 +1,26 @@
 <template>
   <div class="container">
+    <p>Add NetCDF files and select Read NetCDF to load them into the app.</p>
+    <p>
+      <!-- NetCDF files -->
+      <load-files
+        :add-files-to-store="addNCFilesToStore"
+        :remove-files-from-store="removeNCFilesFromStore"
+        :file-selected.sync="ncFileSelected"
+        file-type="NetCDF"
+        :hide-buttons="loading"
+        :show-select="numNCLoaded"
+      />
+      <!-- Load NetCDF-->
+      <v-btn v-if="!loading" @click="readNetCDF()">Read NetCDF</v-btn>
+      <span v-if="loading">Loading...</span>
+    </p>
+
     <p>
       Add .wav files to the Audio Files list, select Process Files, then Select
       a file to view the Spectrogram.
     </p>
-    <p>Add NetCDF files at the bottom to view the parameters.</p>
+    <!-- Audio Files -->
     <load-files
       :add-files-to-store="addAudioFilesToStore"
       :remove-files-from-store="removeAudioFilesFromStore"
@@ -30,17 +46,6 @@
       <heatmap :index="fileSelected" />
     </div>
 
-    <!-- NetCDF files -->
-    <load-files
-      :add-files-to-store="addNCFilesToStore"
-      :remove-files-from-store="removeNCFilesFromStore"
-      :file-selected.sync="ncFileSelected"
-      file-type="NetCDF"
-      :hide-buttons="loading"
-      :show-select="numNCLoaded"
-    />
-    <!-- Load NetCDF-->
-    <v-btn v-if="!loading" @click="readNetCDF()">Read NetCDF</v-btn>
     <!-- <div>
       <p>Select a Variable</p>
       <div class="variable-holder">
@@ -73,6 +78,7 @@
  * Make config parameters adjustable by user
  * change getByteFrequencyData to getFloatFrequencyData if better precision needed, need to fix array remap
  * duration should be different units than seconds so you don't have to round
+ * button control on netcdf file loader
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -157,7 +163,9 @@ export default {
      * Read Net CDF files and add trajectory path variables to gliderData state in store
      */
     async readNetCDF() {
+      this.loading = true;
       for (let i = 0; i < this.ncFiles.length; i++) {
+        console.log('load file ', i);
         await this.getVariables(i, [
           'ctd_time',
           'ctd_depth',
@@ -173,6 +181,7 @@ export default {
       // ).header.variables;
       this.ncFileSelected = this.$store.getters.getNumNCFiles - 1;
       this.numNCLoaded = this.$store.getters.getNumNCFiles;
+      this.loading = false;
     },
 
     /**
