@@ -26,16 +26,36 @@ export default {
   data: () => {
     return {
       selectedTime: 1,
-      index: 0,
+      index: -1,
     };
   },
   computed: {
+    gliderData() {
+      return this.$store.state.gliderData;
+    },
     gliderDepth() {
-      return new Array(1000).fill(1).map((_, i) => {
-        return {
-          x: i,
-          y: Math.sin((0.001 * (i * 180)) / Math.PI) * 50 + 51,
-        };
+      if (this.gliderData.length < 1) return [];
+      const ctdTimeIndex = 0;
+      const ctdDepthIndex = 1;
+      const startTime = this.gliderData[0][ctdTimeIndex][0];
+      let depthData = [];
+      for (let j = 0; j < this.gliderData.length; j++) {
+        const time = this.gliderData[j][ctdTimeIndex];
+        const newData = time.map((x, i) => {
+          return {
+            x: x - startTime, // time
+            y: this.gliderData[j][ctdDepthIndex][i], // depth
+          };
+        });
+        depthData = depthData.concat(newData);
+      }
+      return depthData;
+    },
+  },
+  methods: {
+    getVariableIndex(data, name) {
+      return data.findIndex((v) => {
+        return v.name === name;
       });
     },
   },

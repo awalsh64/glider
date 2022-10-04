@@ -7,6 +7,7 @@ export const state = () => ({
   ncFiles: [],
   ncData: [],
   readVar: { name: '', variable: null },
+  gliderData: [], // [{ time: [], latitude: [], longitude: [], depth: [] }], // length num files
 });
 
 export const getters = {
@@ -56,6 +57,9 @@ export const mutations = {
       props.name
     );
     state.readVar.name = props.name;
+  },
+  addGliderData(state, data) {
+    state.gliderData.push(data);
   },
 };
 

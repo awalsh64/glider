@@ -41,20 +41,20 @@
     />
     <!-- Load NetCDF-->
     <v-btn v-if="!loading" @click="readNetCDF()">Read NetCDF</v-btn>
-    <div>
+    <!-- <div>
       <p>Select a Variable</p>
       <div class="variable-holder">
         <div v-for="(variable, key) in variables" :key="key">
-          <v-btn color="purple" @click="selectVariable(key)">{{
-            variable.name
-          }}</v-btn>
+          <v-btn color="purple" @click="selectVariable(key)"
+            >{{ key }}. {{ variable.name }}</v-btn
+          >
         </div>
       </div>
       <div class="variable-holder">
         <p>Selected Variable:</p>
         {{ selectedVariable }}
       </div>
-    </div>
+    </div> -->
   </div>
 </template>
 
@@ -93,6 +93,7 @@ export default {
       audioSrc: null,
       fileSelected: -1,
       ncFileSelected: -1,
+      numNCLoaded: 0,
       selectedVariable: null,
       loading: false,
       config: {
@@ -139,9 +140,6 @@ export default {
     numLoaded() {
       return this.$store.getters.getNumSpectrograms;
     },
-    numNCLoaded() {
-      return this.$store.state.ncData.length;
-    },
   },
   watch: {
     fileSelected() {
@@ -156,25 +154,35 @@ export default {
   },
   methods: {
     /**
-     * Read Net CDF files
+     * Read Net CDF files and add trajectory path variables to gliderData state in store
      */
     async readNetCDF() {
       for (let i = 0; i < this.ncFiles.length; i++) {
-        await this.getVariables(i).then((v) => {
-          this.addNCDataToStore(v);
+        await this.getVariables(i, [
+          'ctd_time',
+          'ctd_depth',
+          'latitude',
+          'longitude',
+        ]).then((v) => {
+          this.addGliderData(v);
         });
       }
-      this.variables = this.$store.getters.getNCData(
-        this.$store.getters.getNumNCFiles - 1
-      ).header.variables;
+      console.log('all nc files read');
+      // this.variables = this.$store.getters.getNCData(
+      //   this.$store.getters.getNumNCFiles - 1
+      // ).header.variables;
       this.ncFileSelected = this.$store.getters.getNumNCFiles - 1;
+      this.numNCLoaded = this.$store.getters.getNumNCFiles;
     },
 
     /**
-     * Return all variables in NetCDF file
+     * Return needed variables for trajectory path from NetCDF file
+     * @param fileIndex fileIndex of nc file in store
+     * @param vars array of variable names
+     * @return [{name, data}]
      */
-    getVariables(index) {
-      const file = URL.createObjectURL(this.ncFiles[index]);
+    getVariables(fileIndex, vars) {
+      const file = URL.createObjectURL(this.ncFiles[fileIndex]);
       return new Promise(function (resolve) {
         const request = new XMLHttpRequest();
         request.open('GET', file, true);
@@ -184,22 +192,36 @@ export default {
           // wait for file to load using promise
           const data = request.response;
           const reader = new NetCDFReader(data);
-          resolve(reader);
+          // Documentation: https://cheminfo.github.io/netcdfjs/
+          let dataset = [];
+          if (vars.length === 0) {
+            dataset = reader.variables;
+          } else {
+            for (let i = 0; i < vars.length; i++) {
+              dataset.push(reader.getDataVariable(vars[i]));
+            }
+          }
+          resolve(dataset);
         };
         request.send();
       });
     },
 
-    selectVariable(index) {
-      const ncData = this.$store.getters.getNCData(this.ncFileSelected);
-      console.log(index);
-      console.log(ncData.header.variables[index].name);
-      const name = `${ncData.header.variables[index].name}`;
-      this.readVariable({
-        ind: this.ncFileSelected,
-        name,
-      });
-      this.selectedVariable = this.$store.state.readVar.variable;
+    /**
+     * Get variable information for specific term
+     */
+    async selectVariable(index) {
+      // get all variables for variable list for selected nc file
+      // when variable is selected, get variable from name async from this.getVariales
+      // need to get variable name from a different way than getting the whole list and using the index
+      // await this.getVariables(this.ncFileSelected, []).then((v) => {
+      //     this.variables = v;
+      //     const name = `${this.variables[index].name}`;
+      // this.selectedVariable = await this.getVariables(this.ncFileSelected, [
+      //   name,
+      // ])[0].data;
+      // console.log(this.selectedVariable);
+      //   });
     },
 
     /*
@@ -420,6 +442,7 @@ export default {
       'removeNCFilesFromStore',
       'addNCDataToStore',
       'readVariable',
+      'addGliderData',
     ]),
   },
 };
