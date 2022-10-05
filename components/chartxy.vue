@@ -29,6 +29,17 @@ export default {
       selectedTime: 1,
     };
   },
+  computed: {
+    timeMarkers() {
+      const data = this.$store.state.spectrogramData;
+      const timeData = [];
+      for (let i = 0; i < data.length; i++) {
+        timeData.push({ x: data[i].startTime, y: 0 });
+        timeData.push({ x: data[i].startTime, y: 100 });
+      }
+      return timeData;
+    },
+  },
   beforeMount() {
     // Generate random ID to us as the containerId for the chart and the target div id
     this.chartId = Math.trunc(Math.random() * 1000000);
@@ -70,6 +81,16 @@ export default {
         // Add data points to the line series
         .add(this.points);
 
+      // Add markers for spectrogram time
+      this.chart
+        .addLineSeries()
+        .setStrokeStyle((style) =>
+          style
+            .setThickness(3)
+            .setFillStyle(new SolidFill({ color: ColorHEX('#0000FF') }))
+        )
+        .add(this.timeMarkers);
+
       // Add line for time selection
       this.timeSelectedLine = this.setSelectedTime();
 
@@ -88,6 +109,8 @@ export default {
       });
     },
     setSelectedTime() {
+      // TODO: y axis doesn't update until clicked
+      const yMax = this.chart.getDefaultAxisY().getInterval().end;
       return this.chart
         .addLineSeries()
         .setStrokeStyle((style) =>
@@ -97,7 +120,7 @@ export default {
         )
         .add([
           { x: this.selectedTime, y: 0 },
-          { x: this.selectedTime, y: 100 },
+          { x: this.selectedTime, y: yMax },
         ]);
     },
   },

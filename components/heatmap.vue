@@ -126,7 +126,7 @@ export default {
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM
     this.createChart();
-    if (this.index > -1) {
+    if (this.numSpectrograms > this.index) {
       this.addDataToChart();
     }
     // this.selectedTimeLine = this.setSelectedTime();
@@ -163,7 +163,7 @@ export default {
     },
     addDataToChart() {
       const ylen = this.spectrogramData.length;
-      if (ylen === 1) return;
+      if (ylen === 0) return;
       const xlen = this.spectrogramData[0].length;
       // Add a Heatmap to the Chart.
       console.log('add data');

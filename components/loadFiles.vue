@@ -93,12 +93,11 @@ export default {
      */
     handleFilesUpload() {
       const uploadedFiles = this.$refs.files.files;
-
       // Adds the uploaded file to the files array
       for (let i = 0; i < uploadedFiles.length; i++) {
         this.files.push(uploadedFiles[i]);
+        this.addFilesToStore(uploadedFiles[i]);
       }
-      this.addFilesToStore(this.files);
     },
   },
 };

@@ -26,7 +26,7 @@ export default {
   data: () => {
     return {
       selectedTime: 1,
-      index: -1,
+      index: 0,
     };
   },
   computed: {
@@ -50,6 +50,18 @@ export default {
         depthData = depthData.concat(newData);
       }
       return depthData;
+    },
+  },
+  watch: {
+    selectedTime(v) {
+      // find spectrogramData.startTime that starts closest to selectedTime
+      const index = this.$store.state.spectrogramData.findIndex((data) => {
+        console.log('start ', data.startTime);
+        console.log('selected ', v);
+        // selected time < startTime+duration
+        return v < data.startTime + data.duration;
+      });
+      this.index = index;
     },
   },
   methods: {

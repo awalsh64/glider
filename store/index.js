@@ -20,6 +20,9 @@ export const getters = {
   getNumSpectrograms(state) {
     return state.spectrogramData.length;
   },
+  getNumAudioFiles(state) {
+    return state.audioFiles.length;
+  },
   getNumNCFiles(state) {
     return state.ncFiles.length;
   },
@@ -36,14 +39,14 @@ export const mutations = {
     state.spectrogramData.push(data);
   },
   addAudioFilesToStore(state, files) {
-    state.audioFiles = state.audioFiles.concat(files);
+    state.audioFiles.push(files);
   },
   removeAudioFilesFromStore(state, ind) {
     state.audioFiles.splice(ind, 1);
     state.spectrogramData.splice(ind, 1);
   },
   addNCFilesToStore(state, files) {
-    state.ncFiles = state.ncFiles.concat(files);
+    state.ncFiles.push(files);
   },
   removeNCFilesFromStore(state, ind) {
     state.ncFiles.splice(ind, 1);

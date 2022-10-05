@@ -102,6 +102,8 @@ export default {
       numNCLoaded: 0,
       selectedVariable: null,
       loading: false,
+      totalTime: 0,
+      numLoaded: 0,
       config: {
         /**
          * The resolution of the FFT calculations
@@ -136,22 +138,14 @@ export default {
       variables: [],
     };
   },
-  computed: {
-    audioFiles() {
-      return this.$store.state.audioFiles;
-    },
-    ncFiles() {
-      return this.$store.state.ncFiles;
-    },
-    numLoaded() {
-      return this.$store.getters.getNumSpectrograms;
-    },
-  },
+  computed: {},
   watch: {
     fileSelected() {
       // add sound to audio player
       // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL
-      this.audioSrc = URL.createObjectURL(this.audioFiles[this.fileSelected]);
+      this.audioSrc = URL.createObjectURL(
+        this.$store.state.audioFiles[this.fileSelected]
+      );
       const sound = document.getElementById('audio');
       sound.load();
       // const audioCtx = new AudioContext();
@@ -164,7 +158,7 @@ export default {
      */
     async readNetCDF() {
       this.loading = true;
-      for (let i = 0; i < this.ncFiles.length; i++) {
+      for (let i = 0; i < this.$store.state.ncFiles.length; i++) {
         console.log('load file ', i);
         await this.getVariables(i, [
           'ctd_time',
@@ -172,13 +166,12 @@ export default {
           'latitude',
           'longitude',
         ]).then((v) => {
+          // Documentation: https://www.digitalocean.com/community/tutorials/understanding-date-and-time-in-javascript
+          console.log(new Date(v[0][0] * 1000).getUTCHours());
           this.addGliderData(v);
         });
       }
       console.log('all nc files read');
-      // this.variables = this.$store.getters.getNCData(
-      //   this.$store.getters.getNumNCFiles - 1
-      // ).header.variables;
       this.ncFileSelected = this.$store.getters.getNumNCFiles - 1;
       this.numNCLoaded = this.$store.getters.getNumNCFiles;
       this.loading = false;
@@ -191,7 +184,7 @@ export default {
      * @return [{name, data}]
      */
     getVariables(fileIndex, vars) {
-      const file = URL.createObjectURL(this.ncFiles[fileIndex]);
+      const file = URL.createObjectURL(this.$store.state.ncFiles[fileIndex]);
       return new Promise(function (resolve) {
         const request = new XMLHttpRequest();
         request.open('GET', file, true);
@@ -203,6 +196,7 @@ export default {
           const reader = new NetCDFReader(data);
           // Documentation: https://cheminfo.github.io/netcdfjs/
           let dataset = [];
+          // Use NetCDF file reader to get variable data
           if (vars.length === 0) {
             dataset = reader.variables;
           } else {
@@ -242,15 +236,21 @@ export default {
           to the form data.
         */
       this.loading = true;
+      console.log('audioFiles ', this.$store.state.audioFiles);
 
-      for (let i = this.numLoaded; i < this.audioFiles.length; i++) {
+      for (
+        let i = this.$store.getters.getNumSpectrograms;
+        i < this.$store.state.audioFiles.length;
+        i++
+      ) {
         // Documentation: https://zellwk.com/blog/async-await-in-loops/
         // wait for async function
         await this.loadAudioData(i).then((v) => {
           this.addSpectrogramData(v);
         });
       }
-      this.fileSelected = this.audioFiles.length - 1;
+      this.fileSelected = this.$store.state.audioFiles.length - 1;
+      this.numLoaded = this.$store.state.audioFiles.length;
       this.loading = false;
     },
 
@@ -260,7 +260,7 @@ export default {
       const processWaveform = this.processWaveform;
 
       // create URL to reference imported audio file
-      const myAudio = URL.createObjectURL(this.audioFiles[index]);
+      const myAudio = URL.createObjectURL(this.$store.state.audioFiles[index]);
 
       // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/decodeAudioData#examples
       // decode audio data loaded from an XMLHttpRequest
@@ -437,10 +437,12 @@ export default {
       // this.maxFreq = Math.ceil(data.maxFreq / 2); //Use half of the fft data range
       this.minDecibels = data.channelDbRanges.minDecibels;
       this.maxDecibels = data.channelDbRanges.maxDecibels;
+      this.totalTime += Math.floor(data.duration);
       return {
         duration: Math.floor(data.duration),
         maxFreq: Math.ceil(data.maxFreq),
         spectrogramData: remappedData,
+        startTime: this.totalTime - Math.floor(data.duration),
       };
     },
     ...mapMutations([
