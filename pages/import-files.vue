@@ -66,7 +66,7 @@
 <script>
 /**
  * TODO:
- * get correct colormap
+ * DONE-get correct colormap
  * DONE-determine this.minDecibels,this.maxDecibels, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/maxDecibels
  * make heatmap range (decibel range) user prop
  * what happens when you remove last file
@@ -74,11 +74,14 @@
  * upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
  * drag and drop files
  * time scrolling line with audio player
- * hide select button before processed
- * Make config parameters adjustable by user
+ * add audio player to data viewer
+ * DONE-hide select button before processed
+ * Make spectrogram config parameters adjustable by user
  * change getByteFrequencyData to getFloatFrequencyData if better precision needed, need to fix array remap
- * duration should be different units than seconds so you don't have to round
- * button control on netcdf file loader
+ * duration should be different units than seconds so you don't have to figure out minutes
+ * DONE-button control on netcdf file loader
+ * reorder files by number/time
+ * Try with single component, v-if, no store
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -167,7 +170,7 @@ export default {
           'longitude',
         ]).then((v) => {
           // Documentation: https://www.digitalocean.com/community/tutorials/understanding-date-and-time-in-javascript
-          console.log(new Date(v[0][0] * 1000).getUTCHours());
+          console.log(v[0][0]); // new Date(v[0][0] * 1000).getUTCHours());
           this.addGliderData(v);
         });
       }
@@ -245,7 +248,28 @@ export default {
       ) {
         // Documentation: https://zellwk.com/blog/async-await-in-loops/
         // wait for async function
+
         await this.loadAudioData(i).then((v) => {
+          // TODO: load time from inputable look up table or read .cap file
+          const csvTimestamps = [
+            1569338218, 1569338615, 1569341097, 1569341877, 1569343447,
+            1569344206,
+          ];
+          const name = this.$store.state.audioFiles[i].name;
+          let year = name.substr(15, 2);
+          year = '20'.concat(year);
+          // months are from 0-11
+          const month = parseInt(name.substr(17, 2)) - 1;
+          // TODO: Double check that 9 = September?
+          const day = name.substr(19, 2);
+          // TODO: convert time to GMT (4 can't be hard coded)
+          const hours = parseInt(name.substr(22, 2)) - 4;
+          const minutes = name.substr(24, 2);
+          const secs = name.substr(26, 2);
+          const date = new Date(year, month, day, hours, minutes, secs);
+          const timestamp = date.getTime() / 1000; // convert to seconds to match ctd_time
+          v.startTime = csvTimestamps[i];
+          // v.startTime = timestamp;
           this.addSpectrogramData(v);
         });
       }
@@ -442,7 +466,6 @@ export default {
         duration: Math.floor(data.duration),
         maxFreq: Math.ceil(data.maxFreq),
         spectrogramData: remappedData,
-        startTime: this.totalTime - Math.floor(data.duration),
       };
     },
     ...mapMutations([

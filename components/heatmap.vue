@@ -64,43 +64,54 @@ export default {
     palette() {
       // slow
       console.log('LUT');
+      // Jet Colormap Documentation: http://www.gnuplotting.org/matlab-colorbar-with-gnuplot/
       return new LUT({
         units: 'dB',
         steps: [
           {
             value: 0,
-            color: ColorHSV(0, 1, 0),
-            label: `${Math.round(this.intensityDataToDb(255 * (0 / 6)))}`,
+            color: ColorHEX('#000090'),
+            label: `${Math.round(this.intensityDataToDb(255 * (0 / 8)))}`,
           },
           {
-            value: 255 * (1 / 6),
-            color: ColorHSV(270, 0.84, 0.2),
-            label: `${Math.round(this.intensityDataToDb(255 * (1 / 6)))}`,
+            value: 255 * (1 / 8),
+            color: ColorHEX('#000fff'),
+            label: `${Math.round(this.intensityDataToDb(255 * (1 / 8)))}`,
           },
           {
-            value: 255 * (2 / 6),
-            color: ColorHSV(289, 0.86, 0.35),
-            label: `${Math.round(this.intensityDataToDb(255 * (2 / 6)))}`,
+            value: 255 * (2 / 8),
+            color: ColorHEX('#0090ff'),
+            label: `${Math.round(this.intensityDataToDb(255 * (2 / 8)))}`,
           },
           {
-            value: 255 * (3 / 6),
-            color: ColorHSV(324, 0.97, 0.56),
-            label: `${Math.round(this.intensityDataToDb(255 * (3 / 6)))}`,
+            value: 255 * (3 / 8),
+            color: ColorHEX('#0fffee'),
+            label: `${Math.round(this.intensityDataToDb(255 * (3 / 8)))}`,
           },
           {
-            value: 255 * (4 / 6),
-            color: ColorHSV(1, 1, 1),
-            label: `${Math.round(this.intensityDataToDb(255 * (4 / 6)))}`,
+            value: 255 * (4 / 8),
+            color: ColorHEX('#90ff70'),
+            label: `${Math.round(this.intensityDataToDb(255 * (4 / 8)))}`,
           },
           {
-            value: 255 * (5 / 6),
-            color: ColorHSV(44, 0.64, 1),
-            label: `${Math.round(this.intensityDataToDb(255 * (5 / 6)))}`,
+            value: 255 * (5 / 8),
+            color: ColorHEX('#ffee00'),
+            label: `${Math.round(this.intensityDataToDb(255 * (5 / 8)))}`,
+          },
+          {
+            value: 255 * (6 / 8),
+            color: ColorHEX('#ff7000'),
+            label: `${Math.round(this.intensityDataToDb(255 * (6 / 8)))}`,
+          },
+          {
+            value: 255 * (7 / 8),
+            color: ColorHEX('#ee0000'),
+            label: `${Math.round(this.intensityDataToDb(255 * (7 / 8)))}`,
           },
           {
             value: 255,
-            color: ColorHSV(62, 0.32, 1),
-            label: `${Math.round(this.intensityDataToDb(255 * (6 / 6)))}`,
+            color: ColorHEX('#7f0000'),
+            label: `${Math.round(this.intensityDataToDb(255))}`,
           },
         ],
         interpolate: true,
@@ -113,7 +124,7 @@ export default {
     // this.selectedTimeLine = this.setSelectedTime();
     // },
     index() {
-      if (this.numSpectrograms < this.index + 1) return;
+      if (this.numSpectrograms < this.index + 1 || this.index < 0) return;
       this.createChart();
       this.addDataToChart();
     },

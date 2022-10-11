@@ -55,13 +55,16 @@ export default {
   watch: {
     selectedTime(v) {
       // find spectrogramData.startTime that starts closest to selectedTime
+      const startTime = this.$store.state.gliderData[0][0][0];
       const index = this.$store.state.spectrogramData.findIndex((data) => {
         console.log('start ', data.startTime);
         console.log('selected ', v);
-        // selected time < startTime+duration
-        return v < data.startTime + data.duration;
+        // selected time < spectrogram start after current
+        // -1 to get previous spectrogram
+        return v < data.startTime - startTime;
       });
-      this.index = index;
+      if (index < 0) this.index = this.$store.state.spectrogramData.length - 1;
+      else this.index = index - 1;
     },
   },
   methods: {
