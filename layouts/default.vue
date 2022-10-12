@@ -78,7 +78,7 @@ export default {
       miniVariant: false,
       right: true,
       rightDrawer: false,
-      title: 'Gilder Data Viewer',
+      title: 'Glider Data Viewer',
     };
   },
 };

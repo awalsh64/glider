@@ -3,11 +3,13 @@
 </template>
 
 <script>
+// TODO: add bars for start and end time of spectrograms https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-0701-bandsConstantlines.html
 import {
   lightningChart,
   SolidFill,
   ColorHEX,
   translatePoint,
+  AxisTickStrategies,
 } from '@arction/lcjs';
 
 export default {
@@ -55,8 +57,11 @@ export default {
         .setMouseInteractionWheelZoom(false);
 
       // set axes titles
-      this.chart.getDefaultAxisX().setTitle('Time (s)');
-      this.chart.getDefaultAxisY().setTitle('Depth (ft)');
+      this.chart
+        .getDefaultAxisX()
+        .setTitle('Time (s)')
+        .setTickStrategy(AxisTickStrategies.Time); // expects time in milliseconds
+      this.chart.getDefaultAxisY().setTitle('Depth (ft)').setInterval(1, -1);
 
       // Add line series to the chart for glider trajectory
       this.lineSeries = this.chart
@@ -74,7 +79,7 @@ export default {
       this.addTimeMarkers();
 
       // Add line for time selection
-      this.timeSelectedLine = this.setSelectedTime();
+      // this.timeSelectedLine = this.setSelectedTime();
 
       this.chart.onSeriesBackgroundMouseClick((_, event) => {
         // TODO: Disable click when zooming(mousedrag)
@@ -93,7 +98,7 @@ export default {
     setSelectedTime() {
       if (this.$store.state.gliderData.length === 0) return;
       // TODO: y axis doesn't update until clicked
-      const yMax = this.chart.getDefaultAxisY().getInterval().end;
+      const yMin = this.chart.getDefaultAxisY().getInterval().start;
       return this.chart
         .addLineSeries()
         .setStrokeStyle((style) =>
@@ -102,8 +107,8 @@ export default {
             .setFillStyle(new SolidFill({ color: ColorHEX('#F00') }))
         )
         .add([
+          { x: this.selectedTime, y: yMin },
           { x: this.selectedTime, y: 0 },
-          { x: this.selectedTime, y: yMax },
         ]);
     },
     addTimeMarkers() {

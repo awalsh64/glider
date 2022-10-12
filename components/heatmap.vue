@@ -5,6 +5,21 @@
 <script>
 // TODO: axis.addBand for current song playing location
 // Extract required parts from LightningChartJS.
+// Add instruction for manipulating plots
+// convert x axis from seconds to milliseconds for use with Time axis
+
+// plot interactions:
+// zoom in with left click drag left to right rectangle
+// reset zoom with left click drag rectangle right to left
+// zoom on axis selection
+// scroll on axis
+// adjust axis bounds at edge
+// pan with right click
+// move legend
+// You can also remove an axis from the panning interaction by calling axis.setChartInteractionPanByDrag(false).
+// time scrolling? https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-0013-timeTickStrategyScrolling.html
+// key in axis bounds?
+
 import {
   lightningChart,
   PalettedFill,
@@ -15,6 +30,7 @@ import {
   emptyLine,
   Themes,
   LegendBoxBuilders,
+  AxisTickStrategies,
 } from '@arction/lcjs';
 
 export default {
@@ -76,7 +92,7 @@ export default {
           {
             value: 255 * (1 / 8),
             color: ColorHEX('#000fff'),
-            label: `${Math.round(this.intensityDataToDb(255 * (1 / 8)))}`,
+            label: '', // `${Math.round(this.intensityDataToDb(255 * (1 / 8)))}`,
           },
           {
             value: 255 * (2 / 8),
@@ -86,7 +102,7 @@ export default {
           {
             value: 255 * (3 / 8),
             color: ColorHEX('#0fffee'),
-            label: `${Math.round(this.intensityDataToDb(255 * (3 / 8)))}`,
+            label: '', // `${Math.round(this.intensityDataToDb(255 * (3 / 8)))}`,
           },
           {
             value: 255 * (4 / 8),
@@ -96,7 +112,7 @@ export default {
           {
             value: 255 * (5 / 8),
             color: ColorHEX('#ffee00'),
-            label: `${Math.round(this.intensityDataToDb(255 * (5 / 8)))}`,
+            label: '', // `${Math.round(this.intensityDataToDb(255 * (5 / 8)))}`,
           },
           {
             value: 255 * (6 / 8),
@@ -106,7 +122,7 @@ export default {
           {
             value: 255 * (7 / 8),
             color: ColorHEX('#ee0000'),
-            label: `${Math.round(this.intensityDataToDb(255 * (7 / 8)))}`,
+            label: '', // `${Math.round(this.intensityDataToDb(255 * (7 / 8)))}`,
           },
           {
             value: 255,
@@ -148,12 +164,14 @@ export default {
   },
   methods: {
     // Define function that maps Uint8 [0, 255] to Decibels.
+    //
     intensityDataToDb(intensity) {
-      return (
-        this.$store.state.minDecibels +
-        (intensity / 255) *
-          (this.$store.state.maxDecibels - this.$store.state.minDecibels)
-      );
+      const dataMinDecibel = this.$store.state.minDecibels;
+      const dataMaxDecibel = this.$store.state.maxDecibels;
+      const gliderMaxSPL = 164.08; // dB re 1 μPa
+      const minDecibels = dataMinDecibel; // + gliderMaxSPL;
+      const maxDecibels = dataMaxDecibel; // + gliderMaxSPL;
+      return minDecibels + (intensity / 255) * (maxDecibels - minDecibels);
     },
     createChart() {
       if (this.chart) this.chart.dispose();
@@ -169,7 +187,10 @@ export default {
         .setMouseInteractionWheelZoom(false);
 
       // set axes titles
-      this.chart.getDefaultAxisX().setTitle('Time (s)');
+      this.chart
+        .getDefaultAxisX()
+        .setTitle('Time (s)')
+        .setTickStrategy(AxisTickStrategies.Time);
       this.chart.getDefaultAxisY().setTitle('Frequency (Hz)');
     },
     addDataToChart() {
@@ -190,6 +211,7 @@ export default {
           dataOrder: 'rows',
           heatmapDataType: 'intensity',
         })
+        .setName('Power/Frequency(dB/Hz)')
         // Color Heatmap using previously created color look up table.
         .setFillStyle(new PalettedFill({ lut: this.palette }))
         .setWireframeStyle(emptyLine)
@@ -199,7 +221,11 @@ export default {
         .setCursorResultTableFormatter((builder, series, dataPoint) =>
           builder
             .addRow('Acoustic Data')
-            .addRow('Time:', '', series.axisX.formatValue(dataPoint.x) + ' s')
+            .addRow(
+              'Time:',
+              '',
+              series.axisX.formatValue(dataPoint.x * 1000) + ' s'
+            )
             .addRow(
               'Frequency:',
               '',

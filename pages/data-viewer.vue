@@ -43,7 +43,7 @@ export default {
         const time = this.gliderData[j][ctdTimeIndex];
         const newData = time.map((x, i) => {
           return {
-            x: x - startTime, // time
+            x: (x - startTime) * 1000, // time
             y: this.gliderData[j][ctdDepthIndex][i], // depth
           };
         });

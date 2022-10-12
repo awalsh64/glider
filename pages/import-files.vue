@@ -82,6 +82,7 @@
  * DONE-button control on netcdf file loader
  * reorder files by number/time
  * Try with single component, v-if, no store
+ * Load audio start time from inputable look up table or read .cap file
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -346,6 +347,7 @@ export default {
       analyzer.maxDecibels = this.$store.state.maxDecibels;
       analyzer.minDecibels = this.$store.state.minDecibels;
       // TODO: figure out what decibel range to use
+      // 0dB is loudest possible sound
       // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/minDecibels
       // Connect the created analyzer to the source
       source.connect(analyzer);
@@ -501,7 +503,7 @@ span.select-file {
 }
 
 .plot-holder {
-  height: 50vh;
+  height: 80vh;
 }
 
 .variable-holder {
