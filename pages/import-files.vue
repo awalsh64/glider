@@ -83,6 +83,7 @@
  * reorder files by number/time
  * Try with single component, v-if, no store
  * Load audio start time from inputable look up table or read .cap file
+ * fix npm run build for path stuff
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
