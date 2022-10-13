@@ -22,6 +22,7 @@
             Would a fast loading method be helpful that only computes
             spectrograms when trajectory is clicked?
           </p>
+          <p>Where should lat lon be integrated?</p>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
