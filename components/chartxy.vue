@@ -11,6 +11,7 @@ import {
   translatePoint,
   AxisTickStrategies,
 } from '@arction/lcjs';
+import dateToHMS from './utils.js';
 
 export default {
   name: 'TrajectoryChart',
@@ -18,6 +19,10 @@ export default {
     points: {
       required: true,
       type: Array,
+    },
+    startDate: {
+      required: true,
+      type: Date,
     },
   },
   data() {
@@ -28,7 +33,7 @@ export default {
     this.chart = null;
     return {
       chartId: null,
-      selectedTime: 1,
+      selectedTime: null,
     };
   },
   computed: {},
@@ -60,7 +65,9 @@ export default {
       this.chart
         .getDefaultAxisX()
         .setTitle('Time (s)')
-        .setTickStrategy(AxisTickStrategies.Time); // expects time in milliseconds
+        .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
+          tickStrategy.setDateOrigin(this.startDate)
+        ); // expects time in milliseconds
       this.chart.getDefaultAxisY().setTitle('Depth (ft)').setInterval(1, -1);
 
       // Add line series to the chart for glider trajectory
@@ -79,7 +86,7 @@ export default {
       this.addTimeMarkers();
 
       // Add line for time selection
-      // this.timeSelectedLine = this.setSelectedTime();
+      this.timeSelectedLine = this.setSelectedTime();
 
       this.chart.onSeriesBackgroundMouseClick((_, event) => {
         // TODO: Disable click when zooming(mousedrag)
@@ -90,13 +97,23 @@ export default {
           this.lineSeries.scale
         );
         this.selectedTime = curLocationAxis.x;
-        this.timeSelectedLine.dispose();
+        const selectedDate = this.plotTimeToDate(this.selectedTime);
+        if (this.timeSelectedLine) this.timeSelectedLine.dispose();
         this.timeSelectedLine = this.setSelectedTime();
-        this.$emit('time', this.selectedTime);
+        this.$emit('date', selectedDate);
       });
     },
+    /**
+     * Add marker for clicked location
+     */
     setSelectedTime() {
-      if (this.$store.state.gliderData.length === 0) return;
+      if (
+        this.$store.state.gliderData.length === 0 ||
+        this.selectedTime === null
+      ) {
+        return;
+      }
+
       // TODO: y axis doesn't update until clicked
       const yMin = this.chart.getDefaultAxisY().getInterval().start;
       return this.chart
@@ -111,16 +128,17 @@ export default {
           { x: this.selectedTime, y: 0 },
         ]);
     },
+    /**
+     * Add markers for spectrogram start time
+     */
     addTimeMarkers() {
       if (this.$store.state.gliderData.length === 0) return;
       const data = this.$store.state.spectrogramData;
-      const ctdTimeIndex = 0;
-      const startTime = this.$store.state.gliderData[0][ctdTimeIndex][0];
       for (let i = 0; i < data.length; i++) {
         const timeData = [];
-        timeData.push({ x: data[i].startTime - startTime, y: 0 });
-        timeData.push({ x: data[i].startTime - startTime, y: 100 });
-        // Add markers for spectrogram time
+        const x = data[i].startTime - dateToHMS(this.startDate);
+        timeData.push({ x, y: 0 });
+        timeData.push({ x, y: 100 });
         this.chart
           .addLineSeries()
           .setStrokeStyle(
@@ -131,6 +149,9 @@ export default {
           )
           .add(timeData);
       }
+    },
+    plotTimeToDate(plotTime) {
+      return new Date(plotTime + this.startDate.getTime());
     },
   },
 };

@@ -84,6 +84,21 @@
  * Try with single component, v-if, no store
  * Load audio start time from inputable look up table or read .cap file
  * fix npm run build for path stuff
+ * GMT time
+ * lat lon on a map
+ * import bathymetry
+ * get new improved colormap > jet
+ * add parameters to change spectrogram - nfft, overlap, window type
+ * test on mp3 file
+ * rainbow line for sound speed on trajectory
+ * depth vs. ctd_depth
+ * temperature and salinity profile
+ * overlays - bathy, sea surface temp, chlorophyl (how to import, file type)
+ * show all spectrograms by scrolling down
+ * ask Mel where the whales are
+ * |map|profiles|
+ * |spectrograms|
+ * change netCDF variables to object to avoid wrong indexing
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -92,6 +107,7 @@ import { mapMutations, mapGetters } from 'vuex';
 import { NetCDFReader } from 'netcdfjs';
 import Heatmap from '@/components/heatmap.vue';
 import LoadFiles from '@/components/loadFiles.vue';
+import dateToHMS from '@/components/utils.js';
 // File Upload Ex: https://serversideup.net/uploading-files-vuejs-axios/
 export default {
   components: {
@@ -171,8 +187,11 @@ export default {
           'latitude',
           'longitude',
         ]).then((v) => {
+          // TODO: change variables to object to avoid wrong indexing
           // Documentation: https://www.digitalocean.com/community/tutorials/understanding-date-and-time-in-javascript
-          console.log(v[0][0]); // new Date(v[0][0] * 1000).getUTCHours());
+          v[0] = v[0].map((time) => {
+            return time * 1000; // convert seconds to milliseconds
+          });
           this.addGliderData(v);
         });
       }
@@ -252,7 +271,7 @@ export default {
         // wait for async function
 
         await this.loadAudioData(i).then((v) => {
-          // TODO: load time from inputable look up table or read .cap file
+          // TODO: make option to load time from inputable look up table or read .cap file
           const csvTimestamps = [
             1569338218, 1569338615, 1569341097, 1569341877, 1569343447,
             1569344206,
@@ -265,13 +284,11 @@ export default {
           // TODO: Double check that 9 = September?
           const day = name.substr(19, 2);
           // TODO: convert time to GMT (4 can't be hard coded)
-          const hours = parseInt(name.substr(22, 2)) - 4;
+          const hours = parseInt(name.substr(22, 2));
           const minutes = name.substr(24, 2);
           const secs = name.substr(26, 2);
-          const date = new Date(year, month, day, hours, minutes, secs);
-          const timestamp = date.getTime() / 1000; // convert to seconds to match ctd_time
-          v.startTime = csvTimestamps[i];
-          // v.startTime = timestamp;
+          // const date = new Date(year, month, day, hours, minutes, secs);
+          v.startTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
           this.addSpectrogramData(v);
         });
       }
@@ -435,7 +452,6 @@ export default {
       // );
       console.log('remap data');
       const output = [];
-      // console.log(output);
       for (let row = 0; row < strideSize; row += 1) {
         output[row] = [];
         for (let col = 0; col < tickCount; col += 1) {

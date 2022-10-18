@@ -70,12 +70,16 @@ export default {
       return this.$store.getters.getSpectrogramData(this.index).spectrogramData;
     },
     xMax() {
-      if (this.numSpectrograms === 0) return 100; // init as blank chart
+      if (this.numSpectrograms === 0) return 100;
       return this.$store.getters.getSpectrogramData(this.index).duration;
     },
     yMax() {
-      if (this.numSpectrograms === 0) return 100; // init as blank chart
+      if (this.numSpectrograms === 0) return 100;
       return this.$store.getters.getSpectrogramData(this.index).maxFreq;
+    },
+    startTime() {
+      if (this.numSpectrograms === 0) return 0;
+      return this.$store.getters.getSpectrogramData(this.index).startTime;
     },
     palette() {
       // slow
@@ -153,7 +157,8 @@ export default {
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM
     this.createChart();
-    if (this.numSpectrograms > this.index) {
+    // TODO: if all components are on one page, don't need this.index >= 0 because index won't be reset to -1
+    if (this.numSpectrograms > this.index && this.index >= 0) {
       this.addDataToChart();
     }
     // this.selectedTimeLine = this.setSelectedTime();
@@ -189,8 +194,8 @@ export default {
       // set axes titles
       this.chart
         .getDefaultAxisX()
-        .setTitle('Time (s)')
-        .setTickStrategy(AxisTickStrategies.Time);
+        .setTitle('Time (hh:mm:ss)')
+        .setTickStrategy(AxisTickStrategies.Time); // expects time in milliseconds
       this.chart.getDefaultAxisY().setTitle('Frequency (Hz)');
     },
     addDataToChart() {
@@ -203,9 +208,9 @@ export default {
         .addHeatmapGridSeries({
           columns: xlen,
           rows: ylen,
-          start: { x: 0, y: 0 },
+          start: { x: this.startTime, y: 0 },
           end: {
-            x: this.xMax,
+            x: this.startTime + this.xMax * 1000, // convert seconds to milliseconds to match AxisTickStrategies.Time
             y: this.yMax,
           },
           dataOrder: 'rows',
@@ -221,11 +226,7 @@ export default {
         .setCursorResultTableFormatter((builder, series, dataPoint) =>
           builder
             .addRow('Acoustic Data')
-            .addRow(
-              'Time:',
-              '',
-              series.axisX.formatValue(dataPoint.x * 1000) + ' s'
-            )
+            .addRow('Time:', '', series.axisX.formatValue(dataPoint.x))
             .addRow(
               'Frequency:',
               '',
