@@ -31,7 +31,7 @@
     />
     <div>
       <!-- Submit -->
-      <v-btn v-if="!loading" @click="submitFiles()">Process Files</v-btn>
+      <v-btn v-if="!loading" @click="submitAudioFiles()">Process Files</v-btn>
       <!-- Audio Player -->
       <audio id="audio" controls>
         <source :src="audioSrc" type="audio/wav" />
@@ -104,10 +104,15 @@
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
 // Web Audio Documentation: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-decodeaudiodata
 import { mapMutations, mapGetters } from 'vuex';
-import { NetCDFReader } from 'netcdfjs';
+
 import Heatmap from '@/components/heatmap.vue';
 import LoadFiles from '@/components/loadFiles.vue';
 import dateToHMS from '@/components/utils.js';
+import {
+  getNetCDFVariables,
+  loadAudioData,
+  getStartTimeFromFilename,
+} from '@/components/import-functions.js';
 // File Upload Ex: https://serversideup.net/uploading-files-vuejs-axios/
 export default {
   components: {
@@ -123,7 +128,6 @@ export default {
       numNCLoaded: 0,
       selectedVariable: null,
       loading: false,
-      totalTime: 0,
       numLoaded: 0,
       config: {
         /**
@@ -149,13 +153,13 @@ export default {
          * this should match the recorded sample rate of the wav file
          */
         sampleRate: 128000,
+        minDecibels: -160,
+        maxDecibels: -60,
       },
       resolution: {
         x: 1000,
         y: 1000,
       },
-      minDecibels: 0,
-      maxDecibels: 0,
       variables: [],
     };
   },
@@ -181,7 +185,8 @@ export default {
       this.loading = true;
       for (let i = 0; i < this.$store.state.ncFiles.length; i++) {
         console.log('load file ', i);
-        await this.getVariables(i, [
+        const file = URL.createObjectURL(this.$store.state.ncFiles[i]);
+        await getNetCDFVariables(file, [
           'ctd_time',
           'ctd_depth',
           'latitude',
@@ -202,49 +207,16 @@ export default {
     },
 
     /**
-     * Return needed variables for trajectory path from NetCDF file
-     * @param fileIndex fileIndex of nc file in store
-     * @param vars array of variable names
-     * @return [{name, data}]
-     */
-    getVariables(fileIndex, vars) {
-      const file = URL.createObjectURL(this.$store.state.ncFiles[fileIndex]);
-      return new Promise(function (resolve) {
-        const request = new XMLHttpRequest();
-        request.open('GET', file, true);
-        // Documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
-        request.responseType = 'arraybuffer';
-        request.onload = () => {
-          // wait for file to load using promise
-          const data = request.response;
-          const reader = new NetCDFReader(data);
-          // Documentation: https://cheminfo.github.io/netcdfjs/
-          let dataset = [];
-          // Use NetCDF file reader to get variable data
-          if (vars.length === 0) {
-            dataset = reader.variables;
-          } else {
-            for (let i = 0; i < vars.length; i++) {
-              dataset.push(reader.getDataVariable(vars[i]));
-            }
-          }
-          resolve(dataset);
-        };
-        request.send();
-      });
-    },
-
-    /**
      * Get variable information for specific term
      */
     async selectVariable(index) {
       // get all variables for variable list for selected nc file
       // when variable is selected, get variable from name async from this.getVariales
       // need to get variable name from a different way than getting the whole list and using the index
-      // await this.getVariables(this.ncFileSelected, []).then((v) => {
+      // await getNetCDFVariables(this.ncFileSelected, []).then((v) => {
       //     this.variables = v;
       //     const name = `${this.variables[index].name}`;
-      // this.selectedVariable = await this.getVariables(this.ncFileSelected, [
+      // this.selectedVariable = await getNetCDFVariables(this.ncFileSelected, [
       //   name,
       // ])[0].data;
       // console.log(this.selectedVariable);
@@ -254,7 +226,7 @@ export default {
     /*
         Submits audioFiles to the server
       */
-    async submitFiles() {
+    async submitAudioFiles() {
       /*
           Iterate over any file sent over appending the audioFiles
           to the form data.
@@ -269,26 +241,15 @@ export default {
       ) {
         // Documentation: https://zellwk.com/blog/async-await-in-loops/
         // wait for async function
-
-        await this.loadAudioData(i).then((v) => {
+        const file = this.$store.state.audioFiles[i];
+        console.log('load ', i);
+        await loadAudioData(file, this.config).then((v) => {
           // TODO: make option to load time from inputable look up table or read .cap file
           const csvTimestamps = [
             1569338218, 1569338615, 1569341097, 1569341877, 1569343447,
             1569344206,
           ];
-          const name = this.$store.state.audioFiles[i].name;
-          let year = name.substr(15, 2);
-          year = '20'.concat(year);
-          // months are from 0-11
-          const month = parseInt(name.substr(17, 2)) - 1;
-          // TODO: Double check that 9 = September?
-          const day = name.substr(19, 2);
-          // TODO: convert time to GMT (4 can't be hard coded)
-          const hours = parseInt(name.substr(22, 2));
-          const minutes = name.substr(24, 2);
-          const secs = name.substr(26, 2);
-          // const date = new Date(year, month, day, hours, minutes, secs);
-          v.startTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
+          v.startTime = getStartTimeFromFilename(file.name);
           this.addSpectrogramData(v);
         });
       }
@@ -297,196 +258,6 @@ export default {
       this.loading = false;
     },
 
-    loadAudioData(index) {
-      console.log('load ', index);
-      const audioCtx = new AudioContext({ sampleRate: this.config.sampleRate });
-      const processWaveform = this.processWaveform;
-
-      // create URL to reference imported audio file
-      const myAudio = URL.createObjectURL(this.$store.state.audioFiles[index]);
-
-      // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/decodeAudioData#examples
-      // decode audio data loaded from an XMLHttpRequest
-      console.log('XML HTTP');
-      return new Promise(function (resolve) {
-        const request = new XMLHttpRequest();
-        request.open('GET', myAudio, true);
-        // Documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
-        request.responseType = 'arraybuffer';
-        request.onload = () => {
-          console.log('loaded');
-          // wait for file to load using promise
-          const audioData = request.response;
-          audioCtx.decodeAudioData(audioData).then((decodedData) => {
-            // use the decoded data here
-            console.log('decoded');
-            resolve(processWaveform(decodedData));
-            console.log('processed');
-          });
-        };
-        request.send();
-      });
-    },
-    /**
-     * Process a AudioBuffer and create FFT Data for Spectrogram from it.
-     * @param   {AudioBuffer}     audioBuffer   AudioBuffer to process into FFT data.
-     * @returns {WaveFormData}                  Processed data
-     */
-    async processWaveform(audioBuffer) {
-      // Create a new OfflineAudioContext with information from the pre-created audioBuffer
-      // The OfflineAudioContext can be used to process a audio file as fast as possible.
-      // Normal AudioContext would process the file at the speed of playback.
-      const offlineCtx = new OfflineAudioContext(
-        audioBuffer.numberOfChannels,
-        audioBuffer.length,
-        audioBuffer.sampleRate
-      );
-      // Create a new source, in this case we have a AudioBuffer to create it for, so we create a buffer source
-      const source = offlineCtx.createBufferSource();
-      // Set the buffer to the audio buffer we are using
-      source.buffer = audioBuffer;
-
-      // Create a analyzer node for the full context
-      const generalAnalyzer = offlineCtx.createAnalyser();
-      generalAnalyzer.fftSize = this.config.fftResolution;
-      generalAnalyzer.smoothingTimeConstant = this.config.smoothingTimeConstant;
-
-      // Prepare buffer and analyzer
-      // this is the length of the audio buffer if the processorBufferSize is half the fftResolution
-      const channelFFtDataBuffer = new Uint8Array(
-        (audioBuffer.length / this.config.processorBufferSize) *
-          (this.config.fftResolution / 2)
-      );
-
-      // Setup analyzer for this channel
-      const analyzer = offlineCtx.createAnalyser();
-      analyzer.smoothingTimeConstant = this.config.smoothingTimeConstant;
-      analyzer.fftSize = this.config.fftResolution;
-      analyzer.maxDecibels = this.$store.state.maxDecibels;
-      analyzer.minDecibels = this.$store.state.minDecibels;
-      // TODO: figure out what decibel range to use
-      // 0dB is loudest possible sound
-      // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/minDecibels
-      // Connect the created analyzer to the source
-      source.connect(analyzer);
-      const channelDbRanges = {
-        minDecibels: analyzer.minDecibels,
-        maxDecibels: analyzer.maxDecibels,
-      };
-
-      // Script processor is used to process all of the audio data in fftSize sized blocks
-      // Script processor is a deprecated API but the replacement APIs have really poor browser support
-      offlineCtx.createScriptProcessor =
-        offlineCtx.createScriptProcessor || offlineCtx.createJavaScriptNode;
-      const processor = offlineCtx.createScriptProcessor(
-        this.config.processorBufferSize,
-        1,
-        1
-      );
-      let offset = 0;
-      // Documentation https://developer.mozilla.org/en-US/docs/Web/API/ScriptProcessorNode/audioprocess_event
-      processor.onaudioprocess = () => {
-        // Run FFT for each channel
-        /// //////slow
-        const freqData = new Uint8Array(
-          channelFFtDataBuffer.buffer,
-          offset,
-          analyzer.frequencyBinCount
-        );
-        analyzer.getByteFrequencyData(freqData);
-        // TODO: change getByteFrequencyData to getFloatFrequencyData for better precision, need to fix remap
-        // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/getFloatFrequencyData
-        // const freqArrayData = new Float32Array(
-        //   channelFFtDataBuffer.buffer,
-        //   offset,
-        //   analyzer.frequencyBinCount
-        // );
-        // analyzer.getFloatFrequencyData(freqArrayData);
-        offset += generalAnalyzer.frequencyBinCount;
-      };
-      // Connect source buffer to correct nodes,
-      // source feeds to:
-      // processor, to do the actual processing
-      // generalAnalyzer, to get collective information
-      source.connect(processor);
-      processor.connect(offlineCtx.destination);
-      source.connect(generalAnalyzer);
-      // Start the source, other wise start rendering would not process the source
-      source.start(0);
-
-      // Process the audio buffer when loaded
-      await offlineCtx.startRendering();
-      const processed = {
-        channel: channelFFtDataBuffer,
-        channelDbRanges,
-        stride: this.config.fftResolution / 2,
-        tickCount: Math.ceil(
-          audioBuffer.length / this.config.processorBufferSize
-        ),
-        maxFreq: offlineCtx.sampleRate / 2, // max freq is always half the sample rate
-        duration: audioBuffer.duration,
-      };
-
-      return this.formatSpectrogram(processed);
-    },
-    /**
-     * Create data matrix for heatmap from one dimensional array
-     * @param {Uint8Array}  data        FFT Data
-     * @param {number}      strideSize  Single data block width
-     * @param {number}      tickCount    Data row count
-     */
-    remapDataToTwoDimensionalMatrix(data, strideSize, tickCount) {
-      /**
-       * @type {Array<number>}
-       */
-      // Map the one dimensional data to two dimensional data where data goes from right to left
-      // [1, 2, 3, 4, 5, 6]
-      // -> strideSize = 2
-      // -> rowCount = 3
-      // maps to
-      // [1, 4]
-      // [2, 5]
-      // [3, 6]
-      // const output = Array.from(Array(strideSize)).map(() =>
-      // Array.from(Array(tickCount))
-      // );
-      console.log('remap data');
-      const output = [];
-      for (let row = 0; row < strideSize; row += 1) {
-        output[row] = [];
-        for (let col = 0; col < tickCount; col += 1) {
-          output[row][col] = data[col * strideSize + row];
-        }
-      }
-      console.log('done remapped');
-      return output;
-    },
-    /**
-     * Setup data for the chart
-     * */
-    formatSpectrogram(data) {
-      // Set data for each channel
-      // Setup the data for the chart
-      const remappedData = this.remapDataToTwoDimensionalMatrix(
-        data.channel,
-        data.stride,
-        data.tickCount
-      )
-        // Slice only first half of data (rest are 0s).
-        .slice(0, data.stride / 2);
-      // this.spectrogramData = remappedData;
-      // //TODO: duration should be different units than seconds so you don't have to round
-      // this.duration = Math.floor(data.duration);
-      // this.maxFreq = Math.ceil(data.maxFreq / 2); //Use half of the fft data range
-      this.minDecibels = data.channelDbRanges.minDecibels;
-      this.maxDecibels = data.channelDbRanges.maxDecibels;
-      this.totalTime += Math.floor(data.duration);
-      return {
-        duration: Math.floor(data.duration),
-        maxFreq: Math.ceil(data.maxFreq),
-        spectrogramData: remappedData,
-      };
-    },
     ...mapMutations([
       'addSpectrogramData',
       'addAudioFilesToStore',
