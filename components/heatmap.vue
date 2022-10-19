@@ -44,6 +44,20 @@ export default {
       type: Number,
       default: 0,
     },
+    spectrogram: {
+      type: Object,
+      default: () => {
+        return {};
+      },
+    },
+    minDecibel: {
+      type: Number,
+      default: -160,
+    },
+    maxDecibel: {
+      type: Number,
+      default: -60,
+    },
   },
   data() {
     // Add the chart to the data in a way that Vue will not attach it's observers to it.
@@ -62,25 +76,6 @@ export default {
     };
   },
   computed: {
-    numSpectrograms() {
-      return this.$store.getters.getNumSpectrograms;
-    },
-    spectrogramData() {
-      if (this.numSpectrograms === 0) return []; // init as blank chart
-      return this.$store.getters.getSpectrogramData(this.index).spectrogramData;
-    },
-    xMax() {
-      if (this.numSpectrograms === 0) return 100;
-      return this.$store.getters.getSpectrogramData(this.index).duration;
-    },
-    yMax() {
-      if (this.numSpectrograms === 0) return 100;
-      return this.$store.getters.getSpectrogramData(this.index).maxFreq;
-    },
-    startTime() {
-      if (this.numSpectrograms === 0) return 0;
-      return this.$store.getters.getSpectrogramData(this.index).startTime;
-    },
     palette() {
       // slow
       console.log('LUT');
@@ -139,12 +134,12 @@ export default {
     },
   },
   watch: {
-    // selectedTime() {
+    // selectedTime() {fcomputed
     // this.selectedTimeLine.dispose();
     // this.selectedTimeLine = this.setSelectedTime();
     // },
     index() {
-      if (this.numSpectrograms < this.index + 1 || this.index < 0) return;
+      if (this.index < 0) return; // selected time before spectrogram start time
       this.createChart();
       this.addDataToChart();
     },
@@ -157,10 +152,7 @@ export default {
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM
     this.createChart();
-    // TODO: if all components are on one page, don't need this.index >= 0 because index won't be reset to -1
-    if (this.numSpectrograms > this.index && this.index >= 0) {
-      this.addDataToChart();
-    }
+    this.addDataToChart();
     // this.selectedTimeLine = this.setSelectedTime();
   },
   beforeUnmount() {
@@ -171,8 +163,8 @@ export default {
     // Define function that maps Uint8 [0, 255] to Decibels.
     //
     intensityDataToDb(intensity) {
-      const dataMinDecibel = this.$store.state.minDecibels;
-      const dataMaxDecibel = this.$store.state.maxDecibels;
+      const dataMinDecibel = this.minDecibel;
+      const dataMaxDecibel = this.maxDecibel;
       const gliderMaxSPL = 164.08; // dB re 1 μPa
       const minDecibels = dataMinDecibel; // + gliderMaxSPL;
       const maxDecibels = dataMaxDecibel; // + gliderMaxSPL;
@@ -199,19 +191,20 @@ export default {
       this.chart.getDefaultAxisY().setTitle('Frequency (Hz)');
     },
     addDataToChart() {
-      const ylen = this.spectrogramData.length;
+      if (!this.spectrogram.spectrogramData) return;
+      const ylen = this.spectrogram.spectrogramData.length;
       if (ylen === 0) return;
-      const xlen = this.spectrogramData[0].length;
+      const xlen = this.spectrogram.spectrogramData[0].length;
       // Add a Heatmap to the Chart.
       console.log('add data');
       this.dataSeries = this.chart
         .addHeatmapGridSeries({
           columns: xlen,
           rows: ylen,
-          start: { x: this.startTime, y: 0 },
+          start: { x: this.spectrogram.startTime, y: 0 },
           end: {
-            x: this.startTime + this.xMax * 1000, // convert seconds to milliseconds to match AxisTickStrategies.Time
-            y: this.yMax,
+            x: this.spectrogram.startTime + this.spectrogram.duration * 1000, // convert seconds to milliseconds to match AxisTickStrategies.Time
+            y: this.spectrogram.maxFreq,
           },
           dataOrder: 'rows',
           heatmapDataType: 'intensity',
@@ -221,7 +214,7 @@ export default {
         .setFillStyle(new PalettedFill({ lut: this.palette }))
         .setWireframeStyle(emptyLine)
         // Use look up table (LUT) to get heatmap intensity value coloring
-        .invalidateIntensityValues(this.spectrogramData)
+        .invalidateIntensityValues(this.spectrogram.spectrogramData)
         .setMouseInteractions(false)
         .setCursorResultTableFormatter((builder, series, dataPoint) =>
           builder
@@ -260,7 +253,7 @@ export default {
         )
         .add([
           { x: this.selectedTime, y: 0 },
-          { x: this.selectedTime, y: this.xMax },
+          { x: this.selectedTime, y: this.spectrogram.duration },
         ]);
     },
   },

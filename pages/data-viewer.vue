@@ -2,14 +2,14 @@
   <v-row justify="center" align="center">
     <v-col>
       <v-card>
-        <div id="app" style="height: 40vh">
+        <div style="height: 40vh">
           <trajectory
             :points="gliderDepth"
             :start-date="startDate"
             @date="selectedDate = $event"
           />
         </div>
-        <div id="app" style="height: 50vh">
+        <div style="height: 50vh">
           <heatmap :selected-time="selectedTime" :index="index" />
         </div>
       </v-card>
@@ -77,7 +77,7 @@ export default {
       const index = this.$store.state.spectrogramData.findIndex((data) => {
         // selected time < spectrogram start after current
         // -1 to get previous spectrogram
-        return v < data.startTime;
+        return this.selectedTime < data.startTime;
       });
       if (index < 0) this.index = this.$store.state.spectrogramData.length - 1;
       else this.index = index - 1;

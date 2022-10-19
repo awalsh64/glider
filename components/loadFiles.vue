@@ -33,12 +33,8 @@
 <script>
 export default {
   props: {
-    addFilesToStore: {
-      type: Function,
-      required: true,
-    },
-    removeFilesFromStore: {
-      type: Function,
+    files: {
+      type: Array,
       required: true,
     },
     fileSelected: {
@@ -60,7 +56,7 @@ export default {
   },
   data() {
     return {
-      files: [],
+      innerFiles: [],
     };
   },
 
@@ -75,8 +71,8 @@ export default {
      * Removes a select file the user has uploaded
      */
     removeFile(key) {
-      this.removeFilesFromStore(key);
-      this.files.splice(key, 1);
+      this.innerFiles.splice(key, 1);
+      this.$emit('update:files', this.innerFiles);
       if (this.fileSelected === key) {
         this.select(this.fileSelected);
         // TODO: This won't trigger a replot when fileSelected===0 because fileSelected isn't changing
@@ -95,9 +91,9 @@ export default {
       const uploadedFiles = this.$refs.files.files;
       // Adds the uploaded file to the files array
       for (let i = 0; i < uploadedFiles.length; i++) {
-        this.files.push(uploadedFiles[i]);
-        this.addFilesToStore(uploadedFiles[i]);
+        this.innerFiles.push(uploadedFiles[i]);
       }
+      this.$emit('update:files', this.innerFiles);
     },
   },
 };

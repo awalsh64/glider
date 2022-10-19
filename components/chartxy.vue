@@ -4,6 +4,7 @@
 
 <script>
 // TODO: add bars for start and end time of spectrograms https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-0701-bandsConstantlines.html
+// TODO: Disable click when zooming(mousedrag)
 import {
   lightningChart,
   SolidFill,
@@ -24,6 +25,12 @@ export default {
       required: true,
       type: Date,
     },
+    spectrograms: {
+      type: Array,
+      default: () => {
+        return [];
+      },
+    },
   },
   data() {
     // Add the chart to the data in a way that Vue will not attach it's observers to it.
@@ -37,6 +44,14 @@ export default {
     };
   },
   computed: {},
+  watch: {
+    points() {
+      this.createChart();
+    },
+    spectrograms() {
+      this.addTimeMarkers();
+    },
+  },
   beforeMount() {
     // Generate random ID to us as the containerId for the chart and the target div id
     this.chartId = Math.trunc(Math.random() * 1000000);
@@ -53,6 +68,7 @@ export default {
   },
   methods: {
     createChart() {
+      console.log('create trajectory plot');
       // Create chartXY
       // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/dashboard.html#createchartxy
       this.chart = lightningChart()
@@ -82,6 +98,7 @@ export default {
         .setStrokeStyle((style) => style.setThickness(5))
         // Add data points to the line series
         .add(this.points);
+      console.log('points added');
 
       this.addTimeMarkers();
 
@@ -107,10 +124,7 @@ export default {
      * Add marker for clicked location
      */
     setSelectedTime() {
-      if (
-        this.$store.state.gliderData.length === 0 ||
-        this.selectedTime === null
-      ) {
+      if (this.selectedTime === null) {
         return;
       }
 
@@ -132,13 +146,13 @@ export default {
      * Add markers for spectrogram start time
      */
     addTimeMarkers() {
-      if (this.$store.state.gliderData.length === 0) return;
-      const data = this.$store.state.spectrogramData;
-      for (let i = 0; i < data.length; i++) {
+      console.log(this.spectrograms);
+      for (let i = 0; i < this.spectrograms.length; i++) {
         const timeData = [];
-        const x = data[i].startTime - dateToHMS(this.startDate);
+        const x = this.spectrograms[i].startTime - dateToHMS(this.startDate);
+        console.log(x);
         timeData.push({ x, y: 0 });
-        timeData.push({ x, y: 100 });
+        timeData.push({ x, y: 100 }); // TODO:fix y max
         this.chart
           .addLineSeries()
           .setStrokeStyle(

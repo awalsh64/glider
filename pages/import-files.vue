@@ -4,8 +4,7 @@
     <p>
       <!-- NetCDF files -->
       <load-files
-        :add-files-to-store="addNCFilesToStore"
-        :remove-files-from-store="removeNCFilesFromStore"
+        :files.sync="ncFiles"
         :file-selected.sync="ncFileSelected"
         file-type="NetCDF"
         :hide-buttons="loading"
@@ -22,8 +21,7 @@
     </p>
     <!-- Audio Files -->
     <load-files
-      :add-files-to-store="addAudioFilesToStore"
-      :remove-files-from-store="removeAudioFilesFromStore"
+      :files.sync="audioFiles"
       :file-selected.sync="fileSelected"
       file-type="Audio"
       :hide-buttons="loading"
@@ -41,9 +39,24 @@
       <span v-if="loading">Loading...</span>
     </div>
 
+    <!-- Trajectory Plot -->
+    <div style="height: 40vh">
+      <trajectory
+        :points="gliderDepth"
+        :start-date="startDate"
+        :spectrograms="spectrogramData"
+        @date="selectedDate = $event"
+      />
+    </div>
     <!-- Spectrogram -->
     <div class="plot-holder">
-      <heatmap :index="fileSelected" />
+      <heatmap
+        :selected-time="selectedTime"
+        :index="fileSelected"
+        :spectrogram="spectrogramData[fileSelected]"
+        :min-decibel="config.minDecibel"
+        :max-decibel="config.maxDecibel"
+      />
     </div>
 
     <!-- <div>
@@ -104,7 +117,7 @@
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
 // Web Audio Documentation: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-decodeaudiodata
 import { mapMutations, mapGetters } from 'vuex';
-
+import Trajectory from '@/components/chartxy.vue';
 import Heatmap from '@/components/heatmap.vue';
 import LoadFiles from '@/components/loadFiles.vue';
 import dateToHMS from '@/components/utils.js';
@@ -116,6 +129,7 @@ import {
 // File Upload Ex: https://serversideup.net/uploading-files-vuejs-axios/
 export default {
   components: {
+    Trajectory,
     Heatmap,
     LoadFiles,
   },
@@ -129,6 +143,18 @@ export default {
       selectedVariable: null,
       loading: false,
       numLoaded: 0,
+      selectedDate: null,
+      selectedTime: 1,
+      ctdTimeIndex: 0,
+      ctdDepthIndex: 1,
+      spectrogramData: [],
+      audioFiles: [],
+      ncFiles: [],
+      ncData: [],
+      readVar: { name: '', variable: null },
+      gliderData: [], // [{ time: [], latitude: [], longitude: [], depth: [] }], // length num files
+      gliderDepth: [],
+      startDate: new Date(),
       config: {
         /**
          * The resolution of the FFT calculations
@@ -168,24 +194,42 @@ export default {
     fileSelected() {
       // add sound to audio player
       // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL
-      this.audioSrc = URL.createObjectURL(
-        this.$store.state.audioFiles[this.fileSelected]
-      );
+      if (this.fileSelected < 0) return;
+      this.audioSrc = URL.createObjectURL(this.audioFiles[this.fileSelected]);
       const sound = document.getElementById('audio');
       sound.load();
       // const audioCtx = new AudioContext();
       // const source = audioCtx.createMediaElementSource(sound);
     },
+    selectedDate(v) {
+      // find spectrogramData.startTime that starts closest to selectedTime
+      const hours = v.getHours();
+      const minutes = v.getMinutes();
+      const secs = v.getSeconds();
+      this.selectedTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
+      const index = this.spectrogramData.findIndex((data) => {
+        // selected time < spectrogram start after current
+        return this.selectedTime < data.startTime;
+      });
+      // index-1 to get previous spectrogram
+      if (index < 0) this.fileSelected = this.spectrogramData.length - 1;
+      else this.fileSelected = index - 1;
+      console.log('index', this.fileSelected);
+    },
   },
   methods: {
     /**
-     * Read Net CDF files and add trajectory path variables to gliderData state in store
+     * Read Net CDF files and add trajectory path variables to gliderData
      */
     async readNetCDF() {
       this.loading = true;
-      for (let i = 0; i < this.$store.state.ncFiles.length; i++) {
+      const newData = [];
+      let depthData = [];
+      let startTime = 0;
+      // only read new files
+      for (let i = this.gliderData.length; i < this.ncFiles.length; i++) {
         console.log('load file ', i);
-        const file = URL.createObjectURL(this.$store.state.ncFiles[i]);
+        const file = URL.createObjectURL(this.ncFiles[i]);
         await getNetCDFVariables(file, [
           'ctd_time',
           'ctd_depth',
@@ -197,12 +241,33 @@ export default {
           v[0] = v[0].map((time) => {
             return time * 1000; // convert seconds to milliseconds
           });
-          this.addGliderData(v);
+          newData.push(v);
+
+          // get start time of all data
+          if (this.gliderData.length < 1)
+            startTime = newData[0][this.ctdTimeIndex][0];
+          else startTime = this.gliderData[0][this.ctdTimeIndex][0];
+
+          // create glider depth profile
+          const time = v[this.ctdTimeIndex];
+          const oneDive = time.map((x, i) => {
+            return {
+              x: x - startTime, // time milliseconds
+              y: v[this.ctdDepthIndex][i], // depth
+            };
+          });
+          depthData = depthData.concat(oneDive);
         });
       }
       console.log('all nc files read');
-      this.ncFileSelected = this.$store.getters.getNumNCFiles - 1;
-      this.numNCLoaded = this.$store.getters.getNumNCFiles;
+      this.gliderData = this.gliderData.concat(newData);
+      this.gliderDepth = this.gliderDepth.concat(depthData);
+      // offset time by timezone to GMT
+      this.startDate = new Date(
+        startTime + new Date(startTime * 1000).getTimezoneOffset() * 60000
+      );
+      this.ncFileSelected = this.ncFiles.length - 1;
+      this.numNCLoaded = this.ncFiles.length;
       this.loading = false;
     },
 
@@ -232,16 +297,16 @@ export default {
           to the form data.
         */
       this.loading = true;
-      console.log('audioFiles ', this.$store.state.audioFiles);
-
+      console.log('audioFiles ', this.audioFiles);
+      const data = [];
       for (
-        let i = this.$store.getters.getNumSpectrograms;
-        i < this.$store.state.audioFiles.length;
+        let i = this.spectrogramData.length;
+        i < this.audioFiles.length;
         i++
       ) {
         // Documentation: https://zellwk.com/blog/async-await-in-loops/
         // wait for async function
-        const file = this.$store.state.audioFiles[i];
+        const file = this.audioFiles[i];
         console.log('load ', i);
         await loadAudioData(file, this.config).then((v) => {
           // TODO: make option to load time from inputable look up table or read .cap file
@@ -250,24 +315,14 @@ export default {
             1569344206,
           ];
           v.startTime = getStartTimeFromFilename(file.name);
-          this.addSpectrogramData(v);
+          data.push(v);
         });
       }
-      this.fileSelected = this.$store.state.audioFiles.length - 1;
-      this.numLoaded = this.$store.state.audioFiles.length;
+      this.fileSelected = this.audioFiles.length - 1;
+      this.spectrogramData = this.spectrogramData.concat(data);
+      this.numLoaded = this.audioFiles.length;
       this.loading = false;
     },
-
-    ...mapMutations([
-      'addSpectrogramData',
-      'addAudioFilesToStore',
-      'removeAudioFilesFromStore',
-      'addNCFilesToStore',
-      'removeNCFilesFromStore',
-      'addNCDataToStore',
-      'readVariable',
-      'addGliderData',
-    ]),
   },
 };
 </script>

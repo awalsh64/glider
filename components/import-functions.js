@@ -225,16 +225,8 @@ function formatSpectrogram(data) {
     data.channel,
     data.stride,
     data.tickCount
-  )
-    // Slice only first half of data (rest are 0s).
-    .slice(0, data.stride / 2);
-  // this.spectrogramData = remappedData;
-  // //TODO: duration should be different units than seconds so you don't have to round
-  // this.duration = Math.floor(data.duration);
-  // this.maxFreq = Math.ceil(data.maxFreq / 2); //Use half of the fft data range
-  /// ///////////remove?
-  //   this.minDecibels = data.channelDbRanges.minDecibels;
-  //   this.maxDecibels = data.channelDbRanges.maxDecibels;
+  );
+  // DONE - TODO: duration should be different units than seconds so you don't have to round
   return {
     duration: Math.floor(data.duration),
     maxFreq: Math.ceil(data.maxFreq),
