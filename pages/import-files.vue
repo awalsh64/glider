@@ -48,6 +48,17 @@
         @date="selectedDate = $event"
       />
     </div>
+
+    <!-- Temperature Salinity Plot -->
+    <div style="height: 40vh">
+      <temp-sal-chart
+        :points="tempSalData"
+        :start-date="startDate"
+        :spectrograms="spectrogramData"
+        @date="selectedDate = $event"
+      />
+    </div>
+
     <!-- Spectrogram -->
     <div class="plot-holder">
       <heatmap
@@ -104,7 +115,7 @@
  * add parameters to change spectrogram - nfft, overlap, window type
  * test on mp3 file
  * rainbow line for sound speed on trajectory
- * depth vs. ctd_depth
+ * depth vs. ctd_depth - change depthData variable index
  * temperature and salinity profile
  * overlays - bathy, sea surface temp, chlorophyl (how to import, file type)
  * show all spectrograms by scrolling down
@@ -118,6 +129,7 @@
 // Web Audio Documentation: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-decodeaudiodata
 import { mapMutations, mapGetters } from 'vuex';
 import Trajectory from '@/components/chartxy.vue';
+import TempSalChart from '@/components/temp-salinity-chartxy.vue';
 import Heatmap from '@/components/heatmap.vue';
 import LoadFiles from '@/components/loadFiles.vue';
 import dateToHMS from '@/components/utils.js';
@@ -130,6 +142,7 @@ import {
 export default {
   components: {
     Trajectory,
+    TempSalChart,
     Heatmap,
     LoadFiles,
   },
@@ -147,6 +160,12 @@ export default {
       selectedTime: 1,
       ctdTimeIndex: 0,
       ctdDepthIndex: 1,
+      depthIndex: 2,
+      latitudeIndex: 3,
+      longitudeIndex: 4,
+      temperatureIndex: 5,
+      salinityIndex: 6,
+      svpIndex: 7,
       spectrogramData: [],
       audioFiles: [],
       ncFiles: [],
@@ -154,6 +173,7 @@ export default {
       readVar: { name: '', variable: null },
       gliderData: [], // [{ time: [], latitude: [], longitude: [], depth: [] }], // length num files
       gliderDepth: [],
+      tempSalData: [],
       startDate: new Date(),
       config: {
         /**
@@ -225,6 +245,7 @@ export default {
       this.loading = true;
       const newData = [];
       let depthData = [];
+      let tempSalData = [];
       let startTime = 0;
       // only read new files
       for (let i = this.gliderData.length; i < this.ncFiles.length; i++) {
@@ -233,8 +254,12 @@ export default {
         await getNetCDFVariables(file, [
           'ctd_time',
           'ctd_depth',
+          'depth',
           'latitude',
           'longitude',
+          'temperature',
+          'salinity_raw',
+          'sound_velocity',
         ]).then((v) => {
           // TODO: change variables to object to avoid wrong indexing
           // Documentation: https://www.digitalocean.com/community/tutorials/understanding-date-and-time-in-javascript
@@ -253,15 +278,26 @@ export default {
           const oneDive = time.map((x, i) => {
             return {
               x: x - startTime, // time milliseconds
-              y: v[this.ctdDepthIndex][i], // depth
+              y: v[this.depthIndex][i], // depth
             };
           });
           depthData = depthData.concat(oneDive);
+
+          const tempSalinityData = time.map((x, i) => {
+            return {
+              x: x - startTime,
+              y: v[this.temperatureIndex][i],
+              z: v[this.salinityIndex][i],
+            };
+          });
+          tempSalData = tempSalData.concat(tempSalinityData);
         });
       }
       console.log('all nc files read');
       this.gliderData = this.gliderData.concat(newData);
       this.gliderDepth = this.gliderDepth.concat(depthData);
+      this.tempSalData = this.tempSalData.concat(tempSalData);
+      console.log(this.tempSalData);
       // offset time by timezone to GMT
       this.startDate = new Date(
         startTime + new Date(startTime * 1000).getTimezoneOffset() * 60000
