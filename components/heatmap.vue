@@ -187,8 +187,12 @@ export default {
       this.chart
         .getDefaultAxisX()
         .setTitle('Time (hh:mm:ss)')
-        .setTickStrategy(AxisTickStrategies.Time); // expects time in milliseconds
-      this.chart.getDefaultAxisY().setTitle('Frequency (Hz)');
+        .setTickStrategy(AxisTickStrategies.Time) // expects time in milliseconds
+        .setAnimationScroll(undefined);
+      this.chart
+        .getDefaultAxisY()
+        .setAnimationScroll(undefined)
+        .setTitle('Frequency (Hz)');
     },
     addDataToChart() {
       if (!this.spectrogram.spectrogramData) return;
