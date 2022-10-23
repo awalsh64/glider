@@ -44,7 +44,9 @@ export function getStartTimeFromFilename(name) {
   const minutes = name.substr(24, 2);
   const secs = name.substr(26, 2);
   // const date = new Date(year, month, day, hours, minutes, secs);
-  return hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
+  const startTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
+  if (isNaN(startTime)) return 0;
+  return startTime;
 }
 
 /**

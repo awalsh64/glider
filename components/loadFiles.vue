@@ -4,7 +4,15 @@
     <label
       >{{ fileType }} Files:
       <!-- Add Files -->
-      <v-btn v-if="!hideButtons" @click="addFiles()">Add Files</v-btn>
+      <v-btn
+        v-if="!hideButtons"
+        id="drop_zone"
+        @drop="dropHandler"
+        @dragover.prevent
+        @click="openFileExplorer()"
+      >
+        Drag one or more files here to import or click to open file explorer.
+      </v-btn>
       <input
         id="files"
         ref="files"
@@ -14,7 +22,7 @@
       />
     </label>
     <div>
-      <div v-for="(file, key) in files" :key="key">
+      <div v-for="(file, key) in innerFiles" :key="key">
         {{ file.name }}
         <v-btn
           v-if="!hideButtons && showSelect > key"
@@ -33,6 +41,10 @@
 <script>
 export default {
   props: {
+    allowedExtensions: {
+      type: RegExp,
+      required: true,
+    },
     files: {
       type: Array,
       required: true,
@@ -64,8 +76,24 @@ export default {
     /**
      * Open file explorer to add files
      */
-    addFiles() {
+    openFileExplorer() {
       this.$refs.files.click();
+    },
+    /**
+     * Add files to app
+     */
+    addFiles(files) {
+      for (let i = 0; i < files.length; i++) {
+        this.innerFiles.push(files[i]);
+      }
+      this.innerFiles.sort((a, b) => {
+        if (a.name < b.name) {
+          return -1;
+        } else if (a.name > b.name) {
+          return 1;
+        } else return 0;
+      });
+      this.$emit('update:files', this.innerFiles);
     },
     /**
      * Removes a select file the user has uploaded
@@ -90,10 +118,53 @@ export default {
     handleFilesUpload() {
       const uploadedFiles = this.$refs.files.files;
       // Adds the uploaded file to the files array
-      for (let i = 0; i < uploadedFiles.length; i++) {
-        this.innerFiles.push(uploadedFiles[i]);
+      this.addFiles(uploadedFiles);
+    },
+    /**
+     * Check allowed file types
+     */
+    checkFileType(newFile) {
+      if (!this.allowedExtensions.exec(newFile.name)) {
+        alert('Invalid file type');
+        return false;
+      } else {
+        return true;
       }
-      this.$emit('update:files', this.innerFiles);
+    },
+    /**
+     * Drop files into uploader
+     * check file type
+     * add to app
+     */
+    dropHandler(ev) {
+      // Prevent default behavior (Prevent file from being opened)
+      ev.preventDefault();
+      const files = [];
+      if (ev.dataTransfer.items) {
+        // Use DataTransferItemList interface to access the file(s)
+        [...ev.dataTransfer.items].forEach((item) => {
+          // If dropped items aren't files, reject them
+          if (item.kind === 'file') {
+            const newFile = item.getAsFile();
+
+            if (this.checkFileType(newFile)) {
+              files.push(newFile);
+            }
+          }
+        });
+      } else {
+        // Use DataTransfer interface to access the file(s)
+        [...ev.dataTransfer.files].forEach((file) => {
+          if (this.checkFileType(file)) {
+            files.push(file);
+          }
+        });
+      }
+      this.addFiles(files);
+    },
+    dragOverHandler(ev) {
+      // Prevent default behavior (Prevent file from being opened)
+      ev.preventDefault();
     },
   },
 };
@@ -104,5 +175,10 @@ export default {
   height: 30vh;
   max-height: 30vh;
   overflow-y: scroll;
+}
+#drop_zone {
+  border: 5px solid rgb(103, 103, 172);
+  width: 95vw;
+  height: 60px;
 }
 </style>

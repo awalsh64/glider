@@ -1,9 +1,10 @@
 <template>
-  <div class="container">
+  <div>
     <p>Add NetCDF files and select Read NetCDF to load them into the app.</p>
     <p>
       <!-- NetCDF files -->
       <load-files
+        :allowed-extensions="/(\.nc|\.netCDF)$/i"
         :files.sync="ncFiles"
         :file-selected.sync="ncFileSelected"
         file-type="NetCDF"
@@ -21,6 +22,7 @@
     </p>
     <!-- Audio Files -->
     <load-files
+      :allowed-extensions="/(\.mp3|\.wav)$/i"
       :files.sync="audioFiles"
       :file-selected.sync="fileSelected"
       file-type="Audio"
@@ -30,17 +32,12 @@
     <div>
       <!-- Submit -->
       <v-btn v-if="!loading" @click="submitAudioFiles()">Process Files</v-btn>
-      <!-- Audio Player -->
-      <audio id="audio" controls>
-        <source :src="audioSrc" type="audio/wav" />
-        Your browser does not support the audio tag.
-      </audio>
       <!-- Loading -->
       <span v-if="loading">Loading...</span>
     </div>
 
     <!-- Trajectory Plot -->
-    <div style="height: 40vh">
+    <div class="nc-plot-holder">
       <trajectory
         :points="gliderDepth"
         :start-date="startDate"
@@ -50,13 +47,21 @@
     </div>
 
     <!-- Temperature Salinity Plot -->
-    <div style="height: 40vh">
+    <div class="nc-plot-holder">
       <temp-sal-chart
         :points="tempSalData"
         :start-date="startDate"
         :spectrograms="spectrogramData"
         @date="selectedDate = $event"
       />
+    </div>
+
+    <!-- Audio Player -->
+    <div>
+      <audio id="audio" controls>
+        <source :src="audioSrc" type="audio/wav" />
+        Your browser does not support the audio tag.
+      </audio>
     </div>
 
     <!-- Spectrogram -->
@@ -297,7 +302,6 @@ export default {
       this.gliderData = this.gliderData.concat(newData);
       this.gliderDepth = this.gliderDepth.concat(depthData);
       this.tempSalData = this.tempSalData.concat(tempSalData);
-      console.log(this.tempSalData);
       // offset time by timezone to GMT
       this.startDate = new Date(
         startTime + new Date(startTime * 1000).getTimezoneOffset() * 60000
@@ -385,10 +389,18 @@ span.select-file {
   height: 80vh;
 }
 
+.nc-plot-holder {
+  height: 50vh;
+}
+
 .variable-holder {
   height: 40vh;
   width: 42vw;
   overflow-y: scroll;
   float: left;
+}
+
+#audio {
+  width: 98vw;
 }
 </style>
