@@ -101,30 +101,31 @@
  * what happens when you remove last file
  * highlight selected file
  * upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
- * drag and drop files
+ * DONE-drag and drop files
  * time scrolling line with audio player
- * add audio player to data viewer
+ * DONE-add audio player to data viewer
  * DONE-hide select button before processed
  * Make spectrogram config parameters adjustable by user
  * change getByteFrequencyData to getFloatFrequencyData if better precision needed, need to fix array remap
- * duration should be different units than seconds so you don't have to figure out minutes
+ * DONE-duration should be different units than seconds so you don't have to figure out minutes
  * DONE-button control on netcdf file loader
- * reorder files by number/time
- * Try with single component, v-if, no store
+ * DONE-reorder files by number/time
+ * DONE-Try with single component, v-if, no store
  * Load audio start time from inputable look up table or read .cap file
  * fix npm run build for path stuff
- * GMT time
+ * DONE-GMT time
  * lat lon on a map
  * import bathymetry
  * get new improved colormap > jet
  * add parameters to change spectrogram - nfft, overlap, window type
- * test on mp3 file
+ * DONE-test on mp3 file
  * rainbow line for sound speed on trajectory
  * depth vs. ctd_depth - change depthData variable index
- * temperature and salinity profile
+ * DONE-temperature and salinity profile
  * overlays - bathy, sea surface temp, chlorophyl (how to import, file type)
  * show all spectrograms by scrolling down
  * ask Mel where the whales are
+ * Layout:
  * |map|profiles|
  * |spectrograms|
  * change netCDF variables to object to avoid wrong indexing
@@ -132,12 +133,10 @@
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
 // Web Audio Documentation: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-decodeaudiodata
-import { mapMutations, mapGetters } from 'vuex';
 import Trajectory from '@/components/chartxy.vue';
 import TempSalChart from '@/components/temp-salinity-chartxy.vue';
 import Heatmap from '@/components/heatmap.vue';
 import LoadFiles from '@/components/loadFiles.vue';
-import dateToHMS from '@/components/utils.js';
 import {
   getNetCDFVariables,
   loadAudioData,

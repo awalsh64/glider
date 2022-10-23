@@ -5,6 +5,8 @@
 <script>
 // TODO: add bars for start and end time of spectrograms https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-0701-bandsConstantlines.html
 // TODO: Disable click when zooming(mousedrag)
+// TODO: Dashboard for trajectory and temp/sal https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0704-customCursorStackedY.html?theme=lightNew&page-theme=light
+
 import {
   lightningChart,
   SolidFill,
@@ -80,7 +82,6 @@ export default {
       // set axes titles
       this.chart
         .getDefaultAxisX()
-        .setTitle('Time (s)')
         .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
           tickStrategy.setDateOrigin(this.startDate)
         ); // expects time in milliseconds
