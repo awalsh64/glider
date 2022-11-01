@@ -7,6 +7,7 @@
 // Extract required parts from LightningChartJS.
 // Add instruction for manipulating plots
 // convert x axis from seconds to milliseconds for use with Time axis
+// fix legend
 
 // plot interactions:
 // zoom in with left click drag left to right rectangle
@@ -134,7 +135,7 @@ export default {
     },
   },
   watch: {
-    // selectedTime() {fcomputed
+    // selectedTime() {
     // this.selectedTimeLine.dispose();
     // this.selectedTimeLine = this.setSelectedTime();
     // },
