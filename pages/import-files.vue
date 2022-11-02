@@ -63,6 +63,7 @@
         :spectrogram="spectrogramData[fileSelected]"
         :min-decibel="config.minDecibel"
         :max-decibel="config.maxDecibel"
+        :current-time="currentTime"
       />
     </div>
 
@@ -98,6 +99,7 @@
  * DONE-test on mp3 file
  * DONE-GMT time
  * DONE-temperature and salinity profile
+ * DONE - time scrolling line with audio player
  * import bathymetry
  * get new improved colormap > jet
  * depth vs. ctd_depth - change depthData variable index
@@ -117,10 +119,10 @@
  * what happens when you remove last file
  * Load audio start time from inputable look up table or read .cap file
  * highlight selected file
- * time scrolling line with audio player
  * lat lon on a map
  * add parameters to change spectrogram - nfft, overlap, window type
  * rainbow line for sound speed on trajectory
+ * crashes if click nc chart while loading audio files because change fileSelected
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -142,6 +144,7 @@ export default {
   },
   data() {
     return {
+      currentTime: 0,
       audioCtx: null,
       audioSrc: null,
       fileSelected: -1,
@@ -212,8 +215,22 @@ export default {
       this.audioSrc = URL.createObjectURL(this.audioFiles[this.fileSelected]);
       const sound = document.getElementById('audio');
       sound.load();
+      this.selectedTime = this.spectrogramData[this.fileSelected].startTime;
+      this.currentTime = this.spectrogramData[this.fileSelected].startTime;
+      sound.addEventListener(
+        'timeupdate',
+        () => {
+          this.currentTime =
+            sound.currentTime * 1000 +
+            this.spectrogramData[this.fileSelected].startTime;
+        },
+        false
+      );
+
       // const audioCtx = new AudioContext();
       // const source = audioCtx.createMediaElementSource(sound);
+
+      console.log('file selected');
     },
     selectedDate(v) {
       // find spectrogramData.startTime that starts closest to selectedTime
@@ -228,6 +245,8 @@ export default {
       // index-1 to get previous spectrogram
       if (index < 0) this.fileSelected = this.spectrogramData.length - 1;
       else this.fileSelected = index - 1;
+      this.selectedTime = this.spectrogramData[this.fileSelected].startTime;
+      this.currentTime = this.spectrogramData[this.fileSelected].startTime;
       console.log('index', this.fileSelected);
     },
   },

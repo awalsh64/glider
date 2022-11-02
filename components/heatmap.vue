@@ -8,6 +8,7 @@
 // Add instruction for manipulating plots
 // convert x axis from seconds to milliseconds for use with Time axis
 // fix legend
+// change x axis range on file load
 
 // plot interactions:
 // zoom in with left click drag left to right rectangle
@@ -37,6 +38,10 @@ import {
 export default {
   name: 'HeatmapChart',
   props: {
+    currentTime: {
+      type: Number,
+      default: NaN,
+    },
     selectedTime: {
       type: Number,
       default: 1,
@@ -74,6 +79,8 @@ export default {
       },
       legend: false,
       dataSeries: undefined,
+      xAxis: null,
+      currentTimeLine: null,
     };
   },
   computed: {
@@ -135,14 +142,20 @@ export default {
     },
   },
   watch: {
-    // selectedTime() {
-    // this.selectedTimeLine.dispose();
-    // this.selectedTimeLine = this.setSelectedTime();
-    // },
+    selectedTime() {
+      // this.setSelectedTime();
+      this.selectedTimeLine.setValue(this.selectedTime);
+    },
     index() {
       if (this.index < 0) return; // selected time before spectrogram start time
-      this.createChart();
+      // this.createChart();
       this.addDataToChart();
+      // this.setCurrentTime();
+      this.currentTimeLine.setValue(this.currentTime);
+    },
+    currentTime() {
+      // this.setCurrentTime();
+      this.currentTimeLine.setValue(this.currentTime);
     },
   },
   beforeMount() {
@@ -154,7 +167,9 @@ export default {
     // the chart needs the element with specified containerId to exist in the DOM
     this.createChart();
     this.addDataToChart();
-    // this.selectedTimeLine = this.setSelectedTime();
+    this.setCurrentTime();
+    this.setSelectedTime();
+    this.createLegend();
   },
   beforeUnmount() {
     // "dispose" should be called when the component is unmounted to free all the resources used by the chart
@@ -181,11 +196,14 @@ export default {
           container: `${this.chartId}`,
           theme: Themes.darkGold,
         })
-        .setTitle('Spectrogram')
+        .setTitle(
+          'Spectrogram                                                       '
+        )
+        .setPadding({ top: 40 })
         .setMouseInteractionWheelZoom(false);
 
       // set axes titles
-      this.chart
+      this.xAxis = this.chart
         .getDefaultAxisX()
         .setTitle('Time (hh:mm:ss)')
         .setTickStrategy(AxisTickStrategies.Time) // expects time in milliseconds
@@ -196,21 +214,35 @@ export default {
         .setTitle('Frequency (Hz)');
     },
     addDataToChart() {
-      if (!this.spectrogram.spectrogramData) return;
-      const ylen = this.spectrogram.spectrogramData.length;
-      if (ylen === 0) return;
-      const xlen = this.spectrogram.spectrogramData[0].length;
+      let ylen = 2;
+      let xlen = 2;
+      let start = {
+        x: 0,
+        y: 0,
+      };
+      let end = {
+        x: 2,
+        y: 2,
+      };
+      if (this.spectrogram.spectrogramData) {
+        ylen = this.spectrogram.spectrogramData.length;
+        start = { x: this.spectrogram.startTime, y: 0 };
+        if (this.spectrogram.spectrogramData.length !== 0) {
+          xlen = this.spectrogram.spectrogramData[0].length;
+          end = {
+            x: this.spectrogram.startTime + this.spectrogram.duration * 1000, // convert seconds to milliseconds to match AxisTickStrategies.Time
+            y: this.spectrogram.maxFreq,
+          };
+        }
+      }
       // Add a Heatmap to the Chart.
       console.log('add data');
       this.dataSeries = this.chart
         .addHeatmapGridSeries({
           columns: xlen,
           rows: ylen,
-          start: { x: this.spectrogram.startTime, y: 0 },
-          end: {
-            x: this.spectrogram.startTime + this.spectrogram.duration * 1000, // convert seconds to milliseconds to match AxisTickStrategies.Time
-            y: this.spectrogram.maxFreq,
-          },
+          start,
+          end,
           dataOrder: 'rows',
           heatmapDataType: 'intensity',
         })
@@ -219,24 +251,80 @@ export default {
         .setFillStyle(new PalettedFill({ lut: this.palette }))
         .setWireframeStyle(emptyLine)
         // Use look up table (LUT) to get heatmap intensity value coloring
-        .invalidateIntensityValues(this.spectrogram.spectrogramData)
-        .setMouseInteractions(false)
-        .setCursorResultTableFormatter((builder, series, dataPoint) =>
-          builder
-            .addRow('Acoustic Data')
-            .addRow('Time:', '', series.axisX.formatValue(dataPoint.x))
-            .addRow(
-              'Frequency:',
-              '',
-              series.axisY.formatValue(dataPoint.y) + ' Hz'
-            )
-            .addRow(
-              'Amplitude:',
-              '',
-              this.intensityDataToDb(dataPoint.intensity).toFixed(1) + ' dB'
-            )
-        );
+        .setMouseInteractions(false);
+      if (this.spectrogram.spectrogramData) {
+        this.dataSeries
+          .invalidateIntensityValues(this.spectrogram.spectrogramData)
+          .setCursorResultTableFormatter((builder, series, dataPoint) =>
+            builder
+              .addRow('Acoustic Data')
+              .addRow('Time:', '', series.axisX.formatValue(dataPoint.x))
+              .addRow(
+                'Frequency:',
+                '',
+                series.axisY.formatValue(dataPoint.y) + ' Hz'
+              )
+              .addRow(
+                'Amplitude:',
+                '',
+                this.intensityDataToDb(dataPoint.intensity).toFixed(1) + ' dB'
+              )
+          );
+        console.log('spectrogram added');
+      }
+    },
+    setSelectedTime() {
+      // Add a Constantline to the X Axis
+      if (this.selectedTimeLine) {
+        this.selectedTimeLine.dispose();
+      }
+      this.selectedTimeLine = this.xAxis.addConstantLine();
+      // Position the Constantline in the Axis Scale
+      this.selectedTimeLine.setValue(this.selectedTime);
+      // The name of the Constantline will be shown in the LegendBox
+      this.selectedTimeLine.setName('Selected Time');
+      // TODO: change color
+      // emit drag time and set audio time or turn off drag
 
+      // if (this.selectedTimeLine) this.selectedTimeLine.dispose();
+      // this.selectedTimeLine = this.chart
+      //   .addLineSeries()
+      //   .setStrokeStyle(
+      //     (style) =>
+      //       style
+      //         .setThickness(10)
+      //         .setFillStyle(new SolidFill({ color: ColorHEX('#000000') })) // black
+      //   )
+      //   .setName('Selected Time')
+      //   .add([
+      //     { x: this.selectedTime, y: 0 },
+      //     { x: this.selectedTime, y: 64000 },
+      //   ]);
+    },
+    setCurrentTime() {
+      // Add a Constantline to the X Axis
+      if (this.currentTimeLine) {
+        this.currentTimeLine.dispose();
+      }
+      this.currentTimeLine = this.xAxis.addConstantLine();
+      // Position the Constantline in the Axis Scale
+      this.currentTimeLine.setValue(this.currentTime);
+      // The name of the Constantline will be shown in the LegendBox
+      this.currentTimeLine.setName('Audio Time');
+      // TODO: change color
+      // emit drag time and set audio time or turn off drag
+
+      // Add a Band to the X Axis
+      // const xAxisBand = this.xAxis.addBand();
+      // // Set the start and end values of the Band.
+      // xAxisBand
+      //   .setValueStart(55300000) // 55261699)
+      //   .setValueEnd(55310000) // 55261999)
+      //   // Set the name of the Band
+      //   .setName('X Axis Band');
+    },
+    createLegend() {
+      // TODO: fix legend memory leak when creating new plot
       // Add LegendBox
       if (this.legend) this.legend.dispose();
       this.legend = this.chart
@@ -245,21 +333,10 @@ export default {
         .setAutoDispose({
           type: 'max-width',
           maxWidth: 0.8,
-        })
-        .add(this.dataSeries);
-    },
-    setSelectedTime() {
-      return this.chart
-        .addLineSeries()
-        .setStrokeStyle((style) =>
-          style
-            .setThickness(3)
-            .setFillStyle(new SolidFill({ color: ColorHEX('#F00') }))
-        )
-        .add([
-          { x: this.selectedTime, y: 0 },
-          { x: this.selectedTime, y: this.spectrogram.duration },
-        ]);
+        });
+      if (this.dataSeries) this.legend.add(this.dataSeries);
+      if (this.currentTimeLine) this.legend.add(this.currentTimeLine);
+      if (this.selectedTimeLine) this.legend.add(this.selectedTimeLine);
     },
   },
 };

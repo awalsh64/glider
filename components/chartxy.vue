@@ -6,6 +6,7 @@
 // TODO: add bars for start and end time of spectrograms https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-0701-bandsConstantlines.html
 // TODO: Disable click when zooming(mousedrag)
 // TODO: Dashboard for trajectory and temp/sal https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0704-customCursorStackedY.html?theme=lightNew&page-theme=light
+// add click to temp sal
 
 import {
   lightningChart,
@@ -53,6 +54,8 @@ export default {
     return {
       chartId: null,
       selectedTime: null,
+      timeMarkerLine: [],
+      xAxis: null,
     };
   },
   computed: {},
@@ -139,7 +142,7 @@ export default {
         .setMouseInteractionWheelZoom(false);
 
       // set axes titles
-      const axisX = this.chart2
+      this.chart2
         .getDefaultAxisX()
         .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
           tickStrategy.setDateOrigin(this.startDate)
@@ -336,7 +339,9 @@ export default {
 
           // Format result table text.
           rowX.setText(
-            `Time: ${axisX.formatValue(nearestDataPoints[i].location.x)}`
+            `Time: ${this.chart2
+              .getDefaultAxisX()
+              .formatValue(nearestDataPoints[i].location.x)}`
           );
           const titles = ['Depth', 'Temp', 'Salinity'];
           const units = ['feet', '°C', 'ppt'];
@@ -423,22 +428,42 @@ export default {
      * Add markers for spectrogram start time
      */
     addTimeMarkers() {
-      console.log(this.spectrograms);
+      for (let i = 0; i < this.timeMarkerLine.length; i++) {
+        // remove previously made lines
+        this.timeMarkerLine[i].dispose();
+      }
       for (let i = 0; i < this.spectrograms.length; i++) {
-        const timeData = [];
         const x = this.spectrograms[i].startTime - dateToHMS(this.startDate);
         console.log(x);
-        timeData.push({ x, y: 0 });
-        timeData.push({ x, y: 100 }); // TODO:fix y max
-        this.chart
-          .addLineSeries()
-          .setStrokeStyle(
-            (style) =>
-              style
-                .setThickness(3)
-                .setFillStyle(new SolidFill({ color: ColorHEX('#0000FF') })) // blue
-          )
-          .add(timeData);
+        // Add a Constantline to the X Axis
+        this.timeMarkerLine[i] = this.chart.getDefaultAxisX().addConstantLine();
+        // Position the Constantline in the Axis Scale
+        this.timeMarkerLine[i].setValue(x);
+        // The name of the Constantline will be shown in the LegendBox
+        this.timeMarkerLine[i].setName('Start Time');
+
+        // add lines to temp salinity chart
+        this.timeMarkerLine[i + this.spectrograms.length] = this.chart2
+          .getDefaultAxisX()
+          .addConstantLine();
+        this.timeMarkerLine[i + this.spectrograms.length].setValue(x);
+        this.timeMarkerLine[i + this.spectrograms.length].setName('Start Time');
+        // TODO: change color
+        // turn off drag
+        // legend?
+
+        // const timeData = [];
+        // timeData.push({ x, y: 0 });
+        // timeData.push({ x, y: 100 }); // TODO:fix y max
+        // this.chart
+        //   .addLineSeries()
+        //   .setStrokeStyle(
+        //     (style) =>
+        //       style
+        //         .setThickness(3)
+        //         .setFillStyle(new SolidFill({ color: ColorHEX('#0000FF') })) // blue
+        //   )
+        //   .add(timeData);
       }
     },
     plotTimeToDate(plotTime) {
