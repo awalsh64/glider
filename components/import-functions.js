@@ -1,5 +1,7 @@
 import { NetCDFReader } from 'netcdfjs';
 
+// TODO: window, overlap, nfft, https://www.npmjs.com/package/fft-windowing-ts
+
 /**
  * Return needed variables for trajectory path from NetCDF file
  * @param file loaded nc file
@@ -90,6 +92,7 @@ export function loadAudioData(file, config) {
  * @returns {WaveFormData}                  Processed data
  */
 async function processWaveform(audioBuffer, config) {
+  console.log('process');
   // Create a new OfflineAudioContext with information from the pre-created audioBuffer
   // The OfflineAudioContext can be used to process a audio file as fast as possible.
   // Normal AudioContext would process the file at the speed of playback.
@@ -182,6 +185,7 @@ async function processWaveform(audioBuffer, config) {
     duration: audioBuffer.duration,
   };
 
+  console.log('format');
   return formatSpectrogram(processed);
 }
 
@@ -207,15 +211,20 @@ function remapDataToTwoDimensionalMatrix(data, strideSize, tickCount) {
   // Array.from(Array(tickCount))
   // );
   console.log('remap data');
-  const output = [];
-  for (let row = 0; row < strideSize; row += 1) {
-    output[row] = [];
-    for (let col = 0; col < tickCount; col += 1) {
-      output[row][col] = data[col * strideSize + row];
-    }
-  }
+  const output2 = Array(tickCount)
+    .fill()
+    .map((_, i) => {
+      return data.slice(i * strideSize, i * strideSize + strideSize);
+    });
+  // const output = [];
+  // for (let row = 0; row < strideSize; row += 1) {
+  //   output[row] = [];
+  //   for (let col = 0; col < tickCount; col += 1) {
+  //     output[row][col] = data[col * strideSize + row];
+  //   }
+  // }
   console.log('done remapped');
-  return output;
+  return output2;
 }
 /**
  * Setup data for the chart

@@ -239,11 +239,11 @@ export default {
       console.log('add data');
       this.dataSeries = this.chart
         .addHeatmapGridSeries({
-          columns: xlen,
-          rows: ylen,
+          columns: ylen,
+          rows: xlen,
           start,
           end,
-          dataOrder: 'rows',
+          dataOrder: 'columns',
           heatmapDataType: 'intensity',
         })
         .setName('Power/Frequency(dB/Hz)')

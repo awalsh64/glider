@@ -174,12 +174,12 @@ export default {
       startDate: new Date(),
       config: {
         /**
-         * The resolution of the FFT calculations
+         * The resolution of the FFT calculations - NFFT
          * Higher value means higher resolution decibel domain.
          * 4096 gives freq res of 31-32Hz
          * 8192 gives 15-16Hz
          */
-        fftResolution: 4096,
+        fftResolution: 512,
         /**
          * Smoothing value for FFT calculations
          */
