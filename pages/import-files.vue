@@ -1,40 +1,55 @@
 <template>
   <div>
-    <p>Add NetCDF files and select Read NetCDF to load them into the app.</p>
-    <p>
-      <!-- NetCDF files -->
-      <load-files
-        :allowed-extensions="/(\.nc|\.netCDF)$/i"
-        :files.sync="ncFiles"
-        :file-selected.sync="ncFileSelected"
-        file-type="NetCDF"
-        :hide-buttons="loading"
-        :show-select="numNCLoaded"
-      />
-      <!-- Load NetCDF-->
-      <v-btn v-if="!loading" @click="readNetCDF()">Read NetCDF</v-btn>
-      <span v-if="loading">Loading...</span>
-    </p>
-
-    <p>
-      Add .wav files to the Audio Files list, select Process Files, then Select
-      a file to view the Spectrogram.
-    </p>
-    <!-- Audio Files -->
-    <load-files
-      :allowed-extensions="/(\.mp3|\.wav)$/i"
-      :files.sync="audioFiles"
-      :file-selected.sync="fileSelected"
-      file-type="Audio"
-      :hide-buttons="loading"
-      :show-select="numLoaded"
-    />
-    <div>
-      <!-- Submit -->
-      <v-btn v-if="!loading" @click="submitAudioFiles()">Process Files</v-btn>
-      <!-- Loading -->
-      <span v-if="loading">Loading...</span>
-    </div>
+    <v-expansion-panels>
+      <v-expansion-panel>
+        <v-expansion-panel-header> NetCDF Files </v-expansion-panel-header>
+        <v-expansion-panel-content>
+          <p>Add NetCDF files and select Read NetCDF to import.</p>
+          <p>
+            <!-- NetCDF files -->
+            <load-files
+              :allowed-extensions="/(\.nc|\.netCDF)$/i"
+              :files.sync="ncFiles"
+              :file-selected.sync="ncFileSelected"
+              file-type="NetCDF"
+              :hide-buttons="loading"
+              :show-select="numNCLoaded"
+            />
+            <!-- Load NetCDF-->
+            <v-btn v-if="!loading" color="primary" @click="readNetCDF()"
+              >Read NetCDF</v-btn
+            >
+            <span v-if="loading">Loading...</span>
+          </p>
+        </v-expansion-panel-content>
+      </v-expansion-panel>
+      <v-expansion-panel>
+        <v-expansion-panel-header> Audio Files </v-expansion-panel-header>
+        <v-expansion-panel-content>
+          <p>
+            Add audio files (.wav or .mp3) and select Process Files to import.
+            Select a file to view the Spectrogram.
+          </p>
+          <!-- Audio Files -->
+          <load-files
+            :allowed-extensions="/(\.mp3|\.wav)$/i"
+            :files.sync="audioFiles"
+            :file-selected.sync="fileSelected"
+            file-type="Audio"
+            :hide-buttons="loading"
+            :show-select="numLoaded"
+          />
+          <div>
+            <!-- Submit -->
+            <v-btn v-if="!loading" color="primary" @click="submitAudioFiles()"
+              >Process Files</v-btn
+            >
+            <!-- Loading -->
+            <span v-if="loading">Loading...</span>
+          </div>
+        </v-expansion-panel-content>
+      </v-expansion-panel>
+    </v-expansion-panels>
 
     <!-- Trajectory Plot -->
     <div class="nc-plot-holder">

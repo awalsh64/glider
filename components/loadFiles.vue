@@ -11,7 +11,8 @@
         @dragover.prevent
         @click="openFileExplorer()"
       >
-        Drag one or more files here to import or click to open file explorer.
+        <v-icon color="primary">mdi-folder-upload-outline</v-icon> Drag one or
+        more files here to import or click to open file explorer.
       </v-btn>
       <input
         id="files"
@@ -177,8 +178,8 @@ export default {
   overflow-y: scroll;
 }
 #drop_zone {
-  border: 5px solid rgb(103, 103, 172);
-  width: 95vw;
+  border: 5px solid #00dc82;
+  width: 95%;
   height: 60px;
 }
 </style>
