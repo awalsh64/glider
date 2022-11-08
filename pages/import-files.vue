@@ -2,9 +2,10 @@
   <div>
     <v-expansion-panels>
       <v-expansion-panel>
-        <v-expansion-panel-header> NetCDF Files </v-expansion-panel-header>
+        <v-expansion-panel-header
+          >Add NetCDF files and select Read NetCDF to import.
+        </v-expansion-panel-header>
         <v-expansion-panel-content>
-          <p>Add NetCDF files and select Read NetCDF to import.</p>
           <p>
             <!-- NetCDF files -->
             <load-files
@@ -24,12 +25,11 @@
         </v-expansion-panel-content>
       </v-expansion-panel>
       <v-expansion-panel>
-        <v-expansion-panel-header> Audio Files </v-expansion-panel-header>
+        <v-expansion-panel-header>
+          Add audio files (.wav or .mp3) and select Process Files to import.
+          Select a file to view the Spectrogram.
+        </v-expansion-panel-header>
         <v-expansion-panel-content>
-          <p>
-            Add audio files (.wav or .mp3) and select Process Files to import.
-            Select a file to view the Spectrogram.
-          </p>
           <!-- Audio Files -->
           <load-files
             :allowed-extensions="/(\.mp3|\.wav)$/i"
@@ -44,6 +44,51 @@
             <v-btn v-if="!loading" color="primary" @click="submitAudioFiles()"
               >Process Files</v-btn
             >
+            <v-dialog v-model="dialog" width="500">
+              <template #activator="{ on, attrs }">
+                <v-btn v-if="!loading" color="primary" v-bind="attrs" v-on="on">
+                  FFT Parameters
+                </v-btn>
+              </template>
+
+              <v-card>
+                <v-card-title class="text-h5"> FFT Parameters </v-card-title>
+                <v-card-text>
+                  <v-combobox
+                    v-model="nfftSelected"
+                    :items="nfftOptions"
+                    label="NFFT"
+                    outlined
+                    dense
+                  ></v-combobox>
+                  <v-text-field
+                    v-model="sampleRateInput"
+                    label="Sample Rate"
+                    clearable
+                    :rules="[rules.min0]"
+                  ></v-text-field>
+                  <v-text-field
+                    v-model="minDecibelInput"
+                    label="Minimum dB"
+                    clearable
+                    :rules="[rules.max0]"
+                  ></v-text-field>
+                  <v-text-field
+                    v-model="maxDecibelInput"
+                    label="Maximum dB"
+                    clearable
+                    :rules="[rules.max0]"
+                  ></v-text-field>
+                </v-card-text>
+                <v-divider></v-divider>
+                <v-card-actions>
+                  <v-spacer></v-spacer>
+                  <v-btn color="primary" text @click="dialog = false">
+                    Submit
+                  </v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
             <!-- Loading -->
             <span v-if="loading">Loading...</span>
           </div>
@@ -138,6 +183,7 @@
  * add parameters to change spectrogram - nfft, overlap, window type
  * rainbow line for sound speed on trajectory
  * crashes if click nc chart while loading audio files because change fileSelected
+ * add watchers to FFT Parameters
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -159,6 +205,17 @@ export default {
   },
   data() {
     return {
+      dialog: false,
+      nfftOptions: [256, 512, 2048, 4096, 8192, 16384],
+      nfftSelected: 2048,
+      sampleRateInput: 128000,
+      minDecibelInput: -160,
+      maxDecibelInput: -60,
+      rules: {
+        min0: (value) => Number(value) > 0 || 'Value must be greater than 0.',
+        max0: (value) =>
+          Number(value) <= 0 || 'Value must be less than or equal to 0.',
+      },
       currentTime: 0,
       audioCtx: null,
       audioSrc: null,
@@ -360,6 +417,14 @@ export default {
           to the form data.
         */
       this.loading = true;
+      this.config = {
+        fftResolution: this.nfftSelected,
+        smoothingTimeConstant: 0,
+        processorBufferSize: 2048,
+        sampleRate: this.sampleRateInput,
+        minDecibels: this.minDecibelInput,
+        maxDecibels: this.maxDecibelInput,
+      };
       console.log('audioFiles ', this.audioFiles);
       const data = [];
       for (

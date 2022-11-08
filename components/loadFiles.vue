@@ -28,6 +28,7 @@
         <v-btn
           v-if="!hideButtons && showSelect > key"
           class="select-file"
+          :color="fileSelected === key ? 'primary' : ''"
           @click="select(key)"
           >Select</v-btn
         >
