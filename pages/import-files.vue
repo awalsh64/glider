@@ -361,18 +361,34 @@ export default {
           // create glider depth profile
           const time = v[this.ctdTimeIndex];
           const oneDive = time.map((x, i) => {
+            const T = v[this.temperatureIndex][i]; // Celcius
+            const S = v[this.salinityIndex][i]; // ppt
+            const D = v[this.depthIndex][i] * 0.3048; // meters
+            const soundSpeed =
+              1448.96 +
+              4.591 * T -
+              5.304 * 10 ** -2 * T ** 2 +
+              2.374 * 10 ** -4 * T ** 3 +
+              1.34 * (S - 35) +
+              1.63 * 10 ** -2 * D +
+              1.675 * 10 ** -7 * D ** 2 -
+              1.025 * 10 ** -2 * T * (S - 35) -
+              7.139 * 10 ** -13 * T * D ** 3; // documentation: Mackenzie equation (1981) http://resource.npl.co.uk/acoustics/techguides/soundseawater/underlying-phys.html
+            // reference: K.V. Mackenzie, Nine-term equation for the sound speed in the oceans (1981) J. Acoust. Soc. Am. 70(3), pp 807-812
             return {
               x: x - startTime, // time milliseconds
               y: v[this.depthIndex][i], // depth
+              value: soundSpeed, // sound speed
             };
           });
           depthData = depthData.concat(oneDive);
 
-          const tempSalinityData = time.map((x, i) => {
+          const tempSalinityData = oneDive.map((dive, i) => {
             return {
-              x: x - startTime,
+              x: dive.x,
               y: v[this.temperatureIndex][i],
               z: v[this.salinityIndex][i],
+              value: dive.value,
             };
           });
           tempSalData = tempSalData.concat(tempSalinityData);

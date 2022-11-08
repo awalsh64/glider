@@ -324,9 +324,12 @@ export default {
       //   .setName('X Axis Band');
     },
     createLegend() {
-      // TODO: fix legend memory leak when creating new plot
+      // TODO: fix legend memory leak when creating new plot - added this.legend = undefined from LCJS example, might help?
       // Add LegendBox
-      if (this.legend) this.legend.dispose();
+      if (this.legend) {
+        this.legend.dispose();
+        this.legend = undefined;
+      }
       this.legend = this.chart
         .addLegendBox(LegendBoxBuilders.HorizontalLegendBox)
         // Dispose example UI elements automatically if they take too much space. This is to avoid bad UI on mobile / etc. devices.

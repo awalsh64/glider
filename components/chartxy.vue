@@ -4,7 +4,7 @@
 
 <script>
 // TODO: add bars for start and end time of spectrograms https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-0701-bandsConstantlines.html
-// TODO: Disable click when zooming(mousedrag)
+// TODO: Disable click when zooming(mousedrag) when no spectrogram (crashes)
 // TODO: Dashboard for trajectory and temp/sal https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0704-customCursorStackedY.html?theme=lightNew&page-theme=light
 // add click to temp sal
 
@@ -20,6 +20,8 @@ import {
   synchronizeAxisIntervals,
   UILayoutBuilders,
   UIElementBuilders,
+  PalettedFill,
+  LUT,
 } from '@arction/lcjs';
 import dateToHMS from './utils.js';
 
@@ -52,10 +54,54 @@ export default {
     // Observing would slow down the chart a lot .
     this.chart = null;
     return {
+      legend: undefined,
       chartId: null,
       selectedTime: null,
       timeMarkerLine: [],
       xAxis: null,
+      lut: new LUT({
+        // https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0052-linePaletteValue.html?theme=lightNew&page-theme=light
+        units: 'm/s',
+        steps: [
+          {
+            value: 1450,
+            color: ColorHEX('#000090'),
+          },
+          {
+            value: 1450 + 120 * (1 / 8),
+            color: ColorHEX('#000fff'),
+          },
+          {
+            value: 1450 + 120 * (2 / 8),
+            color: ColorHEX('#0090ff'),
+          },
+          {
+            value: 1450 + 120 * (3 / 8),
+            color: ColorHEX('#0fffee'),
+          },
+          {
+            value: 1450 + 120 * (4 / 8),
+            color: ColorHEX('#90ff70'),
+          },
+          {
+            value: 1450 + 120 * (5 / 8),
+            color: ColorHEX('#ffee00'),
+          },
+          {
+            value: 1450 + 120 * (6 / 8),
+            color: ColorHEX('#ff7000'),
+          },
+          {
+            value: 1450 + 120 * (7 / 8),
+            color: ColorHEX('#ee0000'),
+          },
+          {
+            value: 1570,
+            color: ColorHEX('#7f0000'),
+          },
+        ],
+        interpolate: true,
+      }),
     };
   },
   computed: {},
@@ -84,6 +130,11 @@ export default {
   methods: {
     createChart() {
       console.log('create trajectory plot');
+      if (this.legend) {
+        this.legend.dispose();
+        this.legend = undefined;
+      }
+
       // Create chartXY
       // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/dashboard.html#createchartxy
       this.dashboard = lightningChart().Dashboard({
@@ -119,14 +170,22 @@ export default {
 
       // Disable default auto cursor.
       this.chart.setAutoCursorMode(AutoCursorModes.disabled);
-
       // Add line series to the chart for glider trajectory
       this.lineSeries1 = this.chart
-        .addLineSeries()
+        .addLineSeries({ individualLookupValuesEnabled: true })
+        .setName('Sound Speed')
         // Set stroke style of the line
         .setStrokeStyle((style) => style.setThickness(5))
+        // Colormap line color
+        .setStrokeStyle((stroke) =>
+          stroke.setFillStyle(
+            new PalettedFill({ lookUpProperty: 'value', lut: this.lut })
+          )
+        )
         // Add data points to the line series
         .add(this.points);
+
+      this.legend = this.chart.addLegendBox().add(this.chart);
 
       /// //// Temperature and Salinity Chart
 
@@ -237,6 +296,10 @@ export default {
           .addElement(UILayoutBuilders.Row)
           .addElement(resultTableTextBuilder);
       });
+
+      const ssLabel = resultTable
+        .addElement(UILayoutBuilders.Row)
+        .addElement(resultTableTextBuilder);
 
       const tickX = this.charts[1]
         .getDefaultAxisX()
@@ -354,6 +417,12 @@ export default {
                 .formatValue(nearestDataPoints[i].location.y)} ${units[i]}`
             );
           });
+
+          ssLabel.setText(
+            `Sound Speed: ${this.charts[0]
+              .getDefaultAxisY()
+              .formatValue(nearestDataPoints[i].location.value)} m/s`
+          );
 
           // Position custom ticks.
           tickX.setValue(nearestDataPoints[i].location.x);
