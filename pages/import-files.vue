@@ -96,6 +96,10 @@
       </v-expansion-panel>
     </v-expansion-panels>
 
+    <div class="map-holder">
+      <geo :points="latLonData"></geo>
+    </div>
+
     <!-- Trajectory Plot -->
     <div class="nc-plot-holder">
       <trajectory
@@ -190,6 +194,7 @@
 // Web Audio Documentation: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-decodeaudiodata
 import Trajectory from '@/components/chartxy.vue';
 import Heatmap from '@/components/heatmap.vue';
+import Geo from '@/components/geo.vue';
 import LoadFiles from '@/components/loadFiles.vue';
 import {
   getNetCDFVariables,
@@ -202,6 +207,7 @@ export default {
     Trajectory,
     Heatmap,
     LoadFiles,
+    Geo,
   },
   data() {
     return {
@@ -243,6 +249,7 @@ export default {
       gliderData: [], // [{ time: [], latitude: [], longitude: [], depth: [] }], // length num files
       gliderDepth: [],
       tempSalData: [],
+      latLonData: [],
       startDate: new Date(),
       config: {
         /**
@@ -331,6 +338,7 @@ export default {
       const newData = [];
       let depthData = [];
       let tempSalData = [];
+      let latLonData = [];
       let startTime = 0;
       // only read new files
       for (let i = this.gliderData.length; i < this.ncFiles.length; i++) {
@@ -392,12 +400,22 @@ export default {
             };
           });
           tempSalData = tempSalData.concat(tempSalinityData);
+
+          const latitudeLongitude = oneDive.map((dive, i) => {
+            return {
+              x: v[this.longitudeIndex][i],
+              y: v[this.latitudeIndex][i],
+              value: dive.y, // depth
+            };
+          });
+          latLonData = latLonData.concat(latitudeLongitude);
         });
       }
       console.log('all nc files read');
       this.gliderData = this.gliderData.concat(newData);
       this.gliderDepth = this.gliderDepth.concat(depthData);
       this.tempSalData = this.tempSalData.concat(tempSalData);
+      this.latLonData = this.latLonData.concat(latLonData);
       // offset time by timezone to GMT
       this.startDate = new Date(
         startTime + new Date(startTime * 1000).getTimezoneOffset() * 60000
@@ -487,6 +505,9 @@ span.select-file {
   color: aqua;
   cursor: pointer;
   float: right;
+}
+.map-holder {
+  height: 50vh;
 }
 
 .plot-holder {
