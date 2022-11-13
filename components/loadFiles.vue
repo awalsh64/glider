@@ -120,6 +120,12 @@ export default {
     handleFilesUpload() {
       const uploadedFiles = this.$refs.files.files;
       // Adds the uploaded file to the files array
+      const files = [];
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        if (this.checkFileType(uploadedFiles[i])) {
+          files.push(uploadedFiles[i]);
+        }
+      }
       this.addFiles(uploadedFiles);
     },
     /**
@@ -127,6 +133,7 @@ export default {
      */
     checkFileType(newFile) {
       if (!this.allowedExtensions.exec(newFile.name)) {
+        console.log(newFile.name);
         alert('Invalid file type');
         return false;
       } else {
@@ -148,7 +155,6 @@ export default {
           // If dropped items aren't files, reject them
           if (item.kind === 'file') {
             const newFile = item.getAsFile();
-
             if (this.checkFileType(newFile)) {
               files.push(newFile);
             }
