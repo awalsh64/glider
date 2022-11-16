@@ -238,6 +238,7 @@ export default {
       }
       // Add a Heatmap to the Chart.
       console.log('add data');
+      if (this.dataSeries) this.dataSeries.dispose();
       this.dataSeries = this.chart
         .addHeatmapGridSeries({
           columns: ylen,
