@@ -165,7 +165,7 @@
  * DONE-temperature and salinity profile
  * DONE - time scrolling line with audio player
  * import bathymetry
- * get new improved colormap > jet
+ * DONE-get new improved colormap > jet Turbo
  * depth vs. ctd_depth - change depthData variable index
  * overlays - bathy, sea surface temp, chlorophyl (how to import, file type)
  * show all spectrograms by scrolling down
