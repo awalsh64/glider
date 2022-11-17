@@ -166,7 +166,7 @@
  * DONE - time scrolling line with audio player
  * import bathymetry
  * DONE-get new improved colormap > jet Turbo
- * depth vs. ctd_depth - change depthData variable index
+ * DONE-depth vs. ctd_depth - change depthData variable index - depth_ctd is better!!!
  * overlays - bathy, sea surface temp, chlorophyl (how to import, file type)
  * show all spectrograms by scrolling down
  * upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
@@ -179,13 +179,13 @@
  * |spectrograms|
  * change netCDF variables to object to avoid wrong indexing, handle missing variables
  * handle missing netCDF variables
- * make heatmap range (decibel range) user prop
+ * DONE-make heatmap range (decibel range) user prop
  * what happens when you remove last file
  * Load audio start time from inputable look up table or read .cap file
- * highlight selected file
- * lat lon on a map
+ * DONE-highlight selected file
+ * DONE-lat lon on a map
  * add parameters to change spectrogram - nfft, overlap, window type
- * rainbow line for sound speed on trajectory
+ * DONE-rainbow line for sound speed on trajectory
  * crashes if click nc chart while loading audio files because change fileSelected
  * add watchers to FFT Parameters
  */
@@ -235,7 +235,7 @@ export default {
       selectedTime: 1,
       ctdTimeIndex: 0,
       ctdDepthIndex: 1,
-      depthIndex: 2,
+      depthIndex: 1, // ctd_depth
       latitudeIndex: 3,
       longitudeIndex: 4,
       temperatureIndex: 5,
