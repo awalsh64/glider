@@ -14,15 +14,18 @@
             Import NetCDF file to view glider path and import .wav file to view
             associated spectrogram.
           </p>
-          <h3>Questions:</h3>
-          <p>What plot interactions are needed?</p>
-          <p>What spectrogram manipulations are useful?</p>
-          <p>Would it be helpful to view NetCDF file variables?</p>
+          <h3>Updates</h3>
+          <p>Turbo Colormap</p>
+          <p>Audio time scrolling line on spectrogram</p>
+          <p>Drag and drop files</p>
+          <p>GMT</p>
+          <p>Temperature and Salinity profile</p>
+          <p>Sound Speed colormap on depth plot-Mackenzie</p>
+          <p>Spectrogram processing input parameters</p>
           <p>
-            Would a fast loading method be helpful that only computes
-            spectrograms when trajectory is clicked?
+            Changed depth to ctd_depth because depth was giving wrong sound
+            speed
           </p>
-          <p>Where should lat lon be integrated?</p>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
