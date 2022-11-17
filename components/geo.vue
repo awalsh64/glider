@@ -6,6 +6,8 @@
 </template>
 
 <script>
+// TODO: zoom https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-1111-covidDrillDownDashboard.html?theme=lightNew&page-theme=light
+
 import {
   lightningChart,
   AxisTickStrategies,
@@ -18,6 +20,8 @@ import {
   transparentFill,
   Themes,
 } from '@arction/lcjs';
+import getTurboSteps from '@/components/turbo.js';
+
 export default {
   name: 'GeoChart',
   props: {
@@ -79,6 +83,16 @@ export default {
       }),
     };
   },
+  computed: {
+    turbo() {
+      const steps = getTurboSteps(0, 1000);
+      return new LUT({
+        units: 'm/s',
+        steps,
+        interpolate: false,
+      });
+    },
+  },
   watch: {
     points() {
       this.createChart();
@@ -109,7 +123,7 @@ export default {
       // create map
       this.mapChart = lightningChart()
         .Map({
-          theme: Themes.darkGold,
+          theme: Themes.lightNature,
           type: MapTypes.World,
           container: `${this.mapId}`,
         })
@@ -137,7 +151,7 @@ export default {
         .addPointSeries({ pointShape: PointShape.Circle })
         .setPointSize(5)
         .setPointFillStyle(
-          new PalettedFill({ lookUpProperty: 'value', lut: this.lut })
+          new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
         )
         .setIndividualPointValueEnabled(true);
 
@@ -171,6 +185,11 @@ export default {
 
         this.chart.setPadding(0);
       });
+
+      this.legend = this.chart
+        .addLegendBox()
+        .add(this.chart)
+        .setPosition({ x: 100, y: 50 });
 
       // Style Map div
       const divMap = document.getElementById(`${this.mapId}`);

@@ -1,12 +1,10 @@
 import { ColorRGBA } from '@arction/lcjs';
 
 function intensityDataToDb(intensity, minDecibels, maxDecibels) {
-  console.log(minDecibels);
-  return minDecibels + (intensity / 255) * (maxDecibels - minDecibels);
+  return minDecibels + (intensity / 254) * (maxDecibels - minDecibels);
 }
 
 export default function getTurboSteps(min, max) {
-  console.log(min);
   // Reference:https://gist.github.com/mikhailov-work/ee72ba4191942acecc03fe6da94fc73f
   const turboColormapData = [
     [0.18995, 0.07176, 0.23217],
@@ -277,10 +275,10 @@ export default function getTurboSteps(min, max) {
       i === (256 * 3) / 4 ||
       i === 254
     ) {
-      label = `${Math.round(intensityDataToDb(255 * (i / 255), min, max))}`;
+      label = `${Math.round(intensityDataToDb(254 * (i / 254), min, max))}`;
     }
     steps.push({
-      value: 255 * (i / 255),
+      value: 254 * (i / 254),
       color: ColorRGBA(
         turboColormapData[i][0] * 255,
         turboColormapData[i][1] * 255,

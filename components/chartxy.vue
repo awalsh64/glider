@@ -5,8 +5,9 @@
 <script>
 // TODO: add bars for start and end time of spectrograms https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-0701-bandsConstantlines.html
 // TODO: Disable click when zooming(mousedrag) when no spectrogram (crashes)
-// TODO: Dashboard for trajectory and temp/sal https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0704-customCursorStackedY.html?theme=lightNew&page-theme=light
+// TODO-DONE: Dashboard for trajectory and temp/sal https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0704-customCursorStackedY.html?theme=lightNew&page-theme=light
 // add click to temp sal
+// TODO: change lut to turbo
 
 import {
   lightningChart,
@@ -24,6 +25,7 @@ import {
   LUT,
 } from '@arction/lcjs';
 import dateToHMS from './utils.js';
+import getTurboSteps from '@/components/turbo.js';
 
 export default {
   name: 'TrajectoryChart',
@@ -104,7 +106,16 @@ export default {
       }),
     };
   },
-  computed: {},
+  computed: {
+    turbo() {
+      const steps = getTurboSteps(1420, 1570);
+      return new LUT({
+        units: 'm/s',
+        steps,
+        interpolate: false,
+      });
+    },
+  },
   watch: {
     points() {
       this.createChart();
