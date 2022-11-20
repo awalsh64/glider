@@ -26,14 +26,10 @@ import {
   lightningChart,
   PalettedFill,
   LUT,
-  ColorHSV,
-  SolidFill,
-  ColorHEX,
   emptyLine,
   Themes,
   LegendBoxBuilders,
   AxisTickStrategies,
-  ColorRGBA,
 } from '@arction/lcjs';
 
 import getTurboSteps from '@/components/turbo.js';
@@ -89,67 +85,11 @@ export default {
   },
   computed: {
     turbo() {
-      const steps = getTurboSteps(this.minDecibel, this.maxDecibel);
+      const steps = getTurboSteps(this.minDecibel, this.maxDecibel, 0, 255);
       return new LUT({
         units: 'dB',
         steps,
         interpolate: false,
-      });
-    },
-    palette() {
-      // slow
-      console.log('LUT');
-      // Jet Colormap Documentation: http://www.gnuplotting.org/matlab-colorbar-with-gnuplot/
-      return new LUT({
-        units: 'dB',
-        steps: [
-          {
-            value: 0,
-            color: ColorHEX('#000090'),
-            label: `${Math.round(this.intensityDataToDb(255 * (0 / 8)))}`,
-          },
-          {
-            value: 255 * (1 / 8),
-            color: ColorHEX('#000fff'),
-            label: '', // `${Math.round(this.intensityDataToDb(255 * (1 / 8)))}`,
-          },
-          {
-            value: 255 * (2 / 8),
-            color: ColorHEX('#0090ff'),
-            label: `${Math.round(this.intensityDataToDb(255 * (2 / 8)))}`,
-          },
-          {
-            value: 255 * (3 / 8),
-            color: ColorHEX('#0fffee'),
-            label: '', // `${Math.round(this.intensityDataToDb(255 * (3 / 8)))}`,
-          },
-          {
-            value: 255 * (4 / 8),
-            color: ColorHEX('#90ff70'),
-            label: `${Math.round(this.intensityDataToDb(255 * (4 / 8)))}`,
-          },
-          {
-            value: 255 * (5 / 8),
-            color: ColorHEX('#ffee00'),
-            label: '', // `${Math.round(this.intensityDataToDb(255 * (5 / 8)))}`,
-          },
-          {
-            value: 255 * (6 / 8),
-            color: ColorHEX('#ff7000'),
-            label: `${Math.round(this.intensityDataToDb(255 * (6 / 8)))}`,
-          },
-          {
-            value: 255 * (7 / 8),
-            color: ColorHEX('#ee0000'),
-            label: '', // `${Math.round(this.intensityDataToDb(255 * (7 / 8)))}`,
-          },
-          {
-            value: 255,
-            color: ColorHEX('#7f0000'),
-            label: `${Math.round(this.intensityDataToDb(255))}`,
-          },
-        ],
-        interpolate: true,
       });
     },
   },

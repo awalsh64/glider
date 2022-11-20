@@ -1,10 +1,18 @@
 import { ColorRGBA } from '@arction/lcjs';
 
-function intensityDataToDb(intensity, minDecibels, maxDecibels) {
-  return minDecibels + (intensity / 254) * (maxDecibels - minDecibels);
+function scaleValues(val, minRange, maxRange) {
+  return minRange + (val / 254) * (maxRange - minRange);
 }
 
-export default function getTurboSteps(min, max) {
+/**
+ * build look up table for specified range of values and labels
+ * @param {number} minLabel minimum value for legend label
+ * @param {number} maxLabel maximum value for legend label
+ * @param {number} minValue minimum value of input data
+ * @param {number} maxValue maximum value of input data
+ * @returns look up table for lightningchart colormap
+ */
+export default function getTurboSteps(minLabel, maxLabel, minValue, maxValue) {
   // Reference:https://gist.github.com/mikhailov-work/ee72ba4191942acecc03fe6da94fc73f
   const turboColormapData = [
     [0.18995, 0.07176, 0.23217],
@@ -275,12 +283,12 @@ export default function getTurboSteps(min, max) {
       i === (256 * 3) / 4 ||
       i === 254
     ) {
-      label = `${Math.round(intensityDataToDb(254 * (i / 254), min, max))}`;
+      label = `${Math.round(scaleValues(254 * (i / 254), minLabel, maxLabel))}`;
     }
     steps.push({
-      value: 254 * (i / 254),
+      value: scaleValues(254 * (i / 254), minValue, maxValue),
       color: ColorRGBA(
-        turboColormapData[i][0] * 255,
+        turboColormapData[i][0] * 255, // convert to color scale out of 255 colors
         turboColormapData[i][1] * 255,
         turboColormapData[i][2] * 255
       ),

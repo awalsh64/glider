@@ -6,7 +6,7 @@
 </template>
 
 <script>
-// TODO: zoom https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-1111-covidDrillDownDashboard.html?theme=lightNew&page-theme=light
+// TODO: zoom to full view when click button https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-1111-covidDrillDownDashboard.html?theme=lightNew&page-theme=light
 
 import {
   lightningChart,
@@ -42,52 +42,13 @@ export default {
       chartId: null,
       mapId: null,
       legend: undefined,
-      lut: new LUT({
-        steps: [
-          {
-            value: 0,
-            color: ColorRGBA(255, 0, 0, 0),
-            label: '0%',
-          },
-          {
-            value: 1,
-            color: ColorRGBA(255, 0, 0),
-            label: '0%',
-          },
-          {
-            value: 20,
-            color: ColorRGBA(150, 0, 0),
-            label: '20%',
-          },
-          {
-            value: 40,
-            color: ColorRGBA(50, 0, 0, 80),
-            label: '40%',
-          },
-          {
-            value: 60,
-            color: ColorRGBA(0, 0, 200, 45),
-            label: '60%',
-          },
-          {
-            value: 80,
-            color: ColorRGBA(0, 200, 0, 50),
-            label: '80%',
-          },
-          {
-            value: 100,
-            color: ColorRGBA(0, 255, 0, 40),
-            label: '100%',
-          },
-        ],
-      }),
     };
   },
   computed: {
     turbo() {
-      const steps = getTurboSteps(0, 1000);
+      const steps = getTurboSteps(0, 1000, 0, 1000);
       return new LUT({
-        units: 'm/s',
+        units: 'feet',
         steps,
         interpolate: false,
       });
@@ -150,6 +111,7 @@ export default {
       const pointsSeries = this.chart
         .addPointSeries({ pointShape: PointShape.Circle })
         .setPointSize(5)
+        .setName('Depth')
         .setPointFillStyle(
           new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
         )
