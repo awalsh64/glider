@@ -7,7 +7,7 @@
 // TODO: Disable click when zooming(mousedrag) when no spectrogram (crashes)
 // TODO-DONE: Dashboard for trajectory and temp/sal https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0704-customCursorStackedY.html?theme=lightNew&page-theme=light
 // add click to temp sal
-// TODO: Disable click when zooming(mousedrag)
+// TODO-DONE: Disable click when zooming(mousedrag)
 
 import {
   lightningChart,
@@ -63,18 +63,12 @@ export default {
       xAxis: null,
       timeSelectedLine: null,
       timeSelectedLine2: null,
+      drag: false,
     };
   },
   computed: {
     turbo() {
       const steps = getTurboSteps(1420, 1570, 1420, 1570);
-      console.log(
-        new LUT({
-          units: 'm/s',
-          steps,
-          interpolate: false,
-        })
-      );
       return new LUT({
         units: 'm/s',
         steps,
@@ -436,29 +430,42 @@ export default {
       this.timeSelectedLine = this.setSelectedTime(this.chart);
       this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
 
-      this.chart.onSeriesBackgroundMouseClick((_, event) => {
+      this.chart.onSeriesBackgroundMouseUp((_, event) => {
         this.clickPlot(this.chart, this.lineSeries1, event);
       });
 
-      this.chart2.onSeriesBackgroundMouseClick((_, event) => {
+      this.chart2.onSeriesBackgroundMouseUp((_, event) => {
         this.clickPlot(this.chart2, this.lineSeries2, event);
       });
+
+      this.chart.onSeriesBackgroundMouseDrag(() => {
+        this.setDrag();
+      });
+      this.chart2.onSeriesBackgroundMouseDrag(() => {
+        this.setDrag();
+      });
+    },
+    setDrag() {
+      this.drag = true;
     },
     clickPlot(plot, line, event) {
-      // TODO: Disable click when zooming(mousedrag)
-      // Translate mouse location to Axis coordinate system.
-      const curLocationAxis = translatePoint(
-        plot.engine.clientLocation2Engine(event.clientX, event.clientY),
-        plot.engine.scale,
-        line.scale
-      );
-      this.selectedTime = curLocationAxis.x;
-      const selectedDate = this.plotTimeToDate(this.selectedTime);
-      if (this.timeSelectedLine) this.timeSelectedLine.dispose();
-      if (this.timeSelectedLine2) this.timeSelectedLine2.dispose();
-      this.timeSelectedLine = this.setSelectedTime(this.chart);
-      this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
-      this.$emit('date', selectedDate);
+      if (this.drag) {
+        this.drag = false;
+      } else {
+        // Translate mouse location to Axis coordinate system.
+        const curLocationAxis = translatePoint(
+          plot.engine.clientLocation2Engine(event.clientX, event.clientY),
+          plot.engine.scale,
+          line.scale
+        );
+        this.selectedTime = curLocationAxis.x;
+        const selectedDate = this.plotTimeToDate(this.selectedTime);
+        if (this.timeSelectedLine) this.timeSelectedLine.dispose();
+        if (this.timeSelectedLine2) this.timeSelectedLine2.dispose();
+        this.timeSelectedLine = this.setSelectedTime(this.chart);
+        this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
+        this.$emit('date', selectedDate);
+      }
     },
     /**
      * Add marker for clicked location
