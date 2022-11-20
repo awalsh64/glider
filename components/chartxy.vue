@@ -7,7 +7,7 @@
 // TODO: Disable click when zooming(mousedrag) when no spectrogram (crashes)
 // TODO-DONE: Dashboard for trajectory and temp/sal https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0704-customCursorStackedY.html?theme=lightNew&page-theme=light
 // add click to temp sal
-// TODO: change lut to turbo
+// TODO: Disable click when zooming(mousedrag)
 
 import {
   lightningChart,
@@ -61,54 +61,20 @@ export default {
       selectedTime: null,
       timeMarkerLine: [],
       xAxis: null,
-      lut: new LUT({
-        // https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0052-linePaletteValue.html?theme=lightNew&page-theme=light
-        units: 'm/s',
-        steps: [
-          {
-            value: 1450,
-            color: ColorHEX('#000090'),
-          },
-          {
-            value: 1450 + 120 * (1 / 8),
-            color: ColorHEX('#000fff'),
-          },
-          {
-            value: 1450 + 120 * (2 / 8),
-            color: ColorHEX('#0090ff'),
-          },
-          {
-            value: 1450 + 120 * (3 / 8),
-            color: ColorHEX('#0fffee'),
-          },
-          {
-            value: 1450 + 120 * (4 / 8),
-            color: ColorHEX('#90ff70'),
-          },
-          {
-            value: 1450 + 120 * (5 / 8),
-            color: ColorHEX('#ffee00'),
-          },
-          {
-            value: 1450 + 120 * (6 / 8),
-            color: ColorHEX('#ff7000'),
-          },
-          {
-            value: 1450 + 120 * (7 / 8),
-            color: ColorHEX('#ee0000'),
-          },
-          {
-            value: 1570,
-            color: ColorHEX('#7f0000'),
-          },
-        ],
-        interpolate: true,
-      }),
+      timeSelectedLine: null,
+      timeSelectedLine2: null,
     };
   },
   computed: {
     turbo() {
-      const steps = getTurboSteps(1420, 1570);
+      const steps = getTurboSteps(1420, 1570, 1420, 1570);
+      console.log(
+        new LUT({
+          units: 'm/s',
+          steps,
+          interpolate: false,
+        })
+      );
       return new LUT({
         units: 'm/s',
         steps,
@@ -190,7 +156,7 @@ export default {
         // Colormap line color
         .setStrokeStyle((stroke) =>
           stroke.setFillStyle(
-            new PalettedFill({ lookUpProperty: 'value', lut: this.lut })
+            new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
           )
         )
         // Add data points to the line series
@@ -467,35 +433,45 @@ export default {
       this.addTimeMarkers();
 
       // Add line for time selection
-      this.timeSelectedLine = this.setSelectedTime();
+      this.timeSelectedLine = this.setSelectedTime(this.chart);
+      this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
 
       this.chart.onSeriesBackgroundMouseClick((_, event) => {
-        // TODO: Disable click when zooming(mousedrag)
-
-        // Translate mouse location to Axis coordinate system.
-        const curLocationAxis = translatePoint(
-          this.chart.engine.clientLocation2Engine(event.clientX, event.clientY),
-          this.chart.engine.scale,
-          this.lineSeries1.scale
-        );
-        this.selectedTime = curLocationAxis.x;
-        const selectedDate = this.plotTimeToDate(this.selectedTime);
-        if (this.timeSelectedLine) this.timeSelectedLine.dispose();
-        this.timeSelectedLine = this.setSelectedTime();
-        this.$emit('date', selectedDate);
+        this.clickPlot(this.chart, this.lineSeries1, event);
       });
+
+      this.chart2.onSeriesBackgroundMouseClick((_, event) => {
+        this.clickPlot(this.chart2, this.lineSeries2, event);
+      });
+    },
+    clickPlot(plot, line, event) {
+      // TODO: Disable click when zooming(mousedrag)
+      // Translate mouse location to Axis coordinate system.
+      const curLocationAxis = translatePoint(
+        plot.engine.clientLocation2Engine(event.clientX, event.clientY),
+        plot.engine.scale,
+        line.scale
+      );
+      this.selectedTime = curLocationAxis.x;
+      const selectedDate = this.plotTimeToDate(this.selectedTime);
+      if (this.timeSelectedLine) this.timeSelectedLine.dispose();
+      if (this.timeSelectedLine2) this.timeSelectedLine2.dispose();
+      this.timeSelectedLine = this.setSelectedTime(this.chart);
+      this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
+      this.$emit('date', selectedDate);
     },
     /**
      * Add marker for clicked location
      */
-    setSelectedTime() {
+    setSelectedTime(chart) {
       if (this.selectedTime === null) {
         return;
       }
 
       // TODO: y axis doesn't update until clicked
-      const yMin = this.chart.getDefaultAxisY().getInterval().start;
-      return this.chart
+      const yMin = chart.getDefaultAxisY().getInterval().start;
+      const yMax = chart.getDefaultAxisY().getInterval().end;
+      return chart
         .addLineSeries()
         .setStrokeStyle((style) =>
           style
@@ -504,7 +480,7 @@ export default {
         )
         .add([
           { x: this.selectedTime, y: yMin },
-          { x: this.selectedTime, y: 0 },
+          { x: this.selectedTime, y: yMax },
         ]);
     },
     /**
