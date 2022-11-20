@@ -46,7 +46,7 @@
             >
             <v-dialog v-model="dialog" width="500">
               <template #activator="{ on, attrs }">
-                <v-btn v-if="!loading" color="primary" v-bind="attrs" v-on="on">
+                <v-btn color="primary" v-bind="attrs" v-on="on">
                   FFT Parameters
                 </v-btn>
               </template>
@@ -187,7 +187,18 @@
  * add parameters to change spectrogram - nfft, overlap, window type
  * DONE-rainbow line for sound speed on trajectory
  * crashes if click nc chart while loading audio files because change fileSelected
- * add watchers to FFT Parameters
+ * add watchers to FFT Parameters and button
+ * add overlay loading indicator
+ * TODO 11/17:try higher sample rate
+ * click spectrogram to play time
+ * label dive number and show number and time in readout
+ * network attached storage or google drive?
+ * link geo to trajectory plot and spectrogram
+ * collapse plots
+ * add speed nc variable
+ * standalone build-https://www.sitepoint.com/bundle-static-site-webpack/
+ * overlap data
+ *
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -324,6 +335,7 @@ export default {
       // index-1 to get previous spectrogram
       if (index < 0) this.fileSelected = this.spectrogramData.length - 1;
       else this.fileSelected = index - 1;
+      if (this.spectrogramData.length < 1) return;
       this.selectedTime = this.spectrogramData[this.fileSelected].startTime;
       this.currentTime = this.spectrogramData[this.fileSelected].startTime;
       console.log('index', this.fileSelected);
