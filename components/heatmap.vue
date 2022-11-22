@@ -126,6 +126,7 @@ export default {
   beforeUnmount() {
     // "dispose" should be called when the component is unmounted to free all the resources used by the chart
     this.chart.dispose();
+    this.chart = undefined;
   },
   methods: {
     // Define function that maps Uint8 [0, 255] to Decibels.
@@ -139,7 +140,10 @@ export default {
       return minDecibels + (intensity / 255) * (maxDecibels - minDecibels);
     },
     createChart() {
-      if (this.chart) this.chart.dispose();
+      if (this.chart) {
+        this.chart.dispose();
+        this.chart = undefined;
+      }
       console.log('create chart');
       // Create chartXY
       // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/chartxy.html
@@ -189,7 +193,10 @@ export default {
       }
       // Add a Heatmap to the Chart.
       console.log('add data');
-      if (this.dataSeries) this.dataSeries.dispose();
+      if (this.dataSeries) {
+        this.dataSeries.dispose();
+        this.dataSeries = undefined;
+      }
       this.dataSeries = this.chart
         .addHeatmapGridSeries({
           columns: ylen,
@@ -230,6 +237,7 @@ export default {
       // Add a Constantline to the X Axis
       if (this.selectedTimeLine) {
         this.selectedTimeLine.dispose();
+        this.selectedTimeLine = undefined;
       }
       this.selectedTimeLine = this.xAxis.addConstantLine();
       // Position the Constantline in the Axis Scale
@@ -258,6 +266,7 @@ export default {
       // Add a Constantline to the X Axis
       if (this.currentTimeLine) {
         this.currentTimeLine.dispose();
+        this.currentTimeLine = undefined;
       }
       this.currentTimeLine = this.xAxis.addConstantLine();
       // Position the Constantline in the Axis Scale

@@ -4,7 +4,7 @@
 
 <script>
 // TODO: add bars for start and end time of spectrograms https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-0701-bandsConstantlines.html
-// TODO: Disable click when zooming(mousedrag) when no spectrogram (crashes)
+// TODO-DONE: Disable click when zooming(mousedrag) when no spectrogram (crashes)
 // TODO-DONE: Dashboard for trajectory and temp/sal https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0704-customCursorStackedY.html?theme=lightNew&page-theme=light
 // add click to temp sal
 // TODO-DONE: Disable click when zooming(mousedrag)
@@ -97,6 +97,11 @@ export default {
   beforeUnmount() {
     // "dispose" should be called when the component is unmounted to free all the resources used by the chart
     this.chart.dispose();
+    this.chart = undefined;
+    this.chart2.dispose();
+    this.chart2 = undefined;
+    this.dashboard.dispose();
+    this.dashboard = undefined;
   },
   methods: {
     createChart() {
@@ -497,10 +502,10 @@ export default {
       for (let i = 0; i < this.timeMarkerLine.length; i++) {
         // remove previously made lines
         this.timeMarkerLine[i].dispose();
+        this.timeMarkerLine[i] = undefined;
       }
       for (let i = 0; i < this.spectrograms.length; i++) {
         const x = this.spectrograms[i].startTime - dateToHMS(this.startDate);
-        console.log(x);
         // Add a Constantline to the X Axis
         this.timeMarkerLine[i] = this.chart.getDefaultAxisX().addConstantLine();
         // Position the Constantline in the Axis Scale
