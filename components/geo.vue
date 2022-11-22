@@ -7,11 +7,10 @@
 
 <script>
 // TODO: zoom to full view when click button https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-1111-covidDrillDownDashboard.html?theme=lightNew&page-theme=light
-
+// dispose data when new data loaded
 import {
   lightningChart,
   AxisTickStrategies,
-  ColorRGBA,
   PointShape,
   PalettedFill,
   LUT,
@@ -19,6 +18,10 @@ import {
   MapTypes,
   transparentFill,
   Themes,
+  UIElementBuilders,
+  UIOrigins,
+  ColorRGBA,
+  SolidFill,
 } from '@arction/lcjs';
 import getTurboSteps from '@/components/turbo.js';
 
@@ -42,6 +45,10 @@ export default {
       chartId: null,
       mapId: null,
       legend: undefined,
+      drag: false,
+      latRange: { start: 0, end: 0 },
+      lonRange: { start: 0, end: 0 },
+      pointsSeries: undefined,
     };
   },
   computed: {
@@ -56,7 +63,8 @@ export default {
   },
   watch: {
     points() {
-      this.createChart();
+      this.addPointsToCharts();
+      this.zoomOutToMap();
     },
   },
   beforeMount() {
@@ -72,15 +80,14 @@ export default {
   beforeUnmount() {
     // "dispose" should be called when the component is unmounted to free all the resources used by the chart
     this.chart.dispose();
+    this.chart = undefined;
     this.mapChart.dispose();
+    this.mapChart = undefined;
   },
   methods: {
     createChart() {
       console.log('create geo');
-      if (this.legend) {
-        this.legend.dispose();
-        this.legend = undefined;
-      }
+
       // create map
       this.mapChart = lightningChart()
         .Map({
@@ -91,9 +98,9 @@ export default {
         .setTitle('')
         .setPadding({
           top: 30,
-          bottom: 0,
+          bottom: 30,
           right: 0,
-          left: 0,
+          left: 40,
         });
 
       // Create chart with customized settings
@@ -105,39 +112,24 @@ export default {
         // .setMouseInteractions(false)
         .setTitle('Geo Location')
         .setBackgroundFillStyle(transparentFill)
-        .setSeriesBackgroundFillStyle(transparentFill);
+        .setSeriesBackgroundFillStyle(transparentFill)
+        .setMouseInteractionWheelZoom(false);
       this.chart.engine.setBackgroundFillStyle(transparentFill);
 
-      const pointsSeries = this.chart
-        .addPointSeries({ pointShape: PointShape.Circle })
-        .setPointSize(5)
-        .setName('Depth')
-        .setPointFillStyle(
-          new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
-        )
-        .setIndividualPointValueEnabled(true);
-
-      this.points.forEach((v) => {
-        pointsSeries.add({
-          x: v.x,
-          y: v.y,
-          value: v.value,
-        });
-      });
-
       // Hide axes
-      this.chart
-        .getDefaultAxes()
-        .forEach((axis) =>
-          axis
-            .setTickStrategy(AxisTickStrategies.Empty)
-            .setStrokeStyle(emptyLine)
-        );
+      // this.chart
+      //   .getDefaultAxes()
+      //   .forEach((axis) =>
+      //     axis
+      //       .setTickStrategy(AxisTickStrategies.Empty)
+      //       .setStrokeStyle(emptyLine)
+      //   );
 
       // Synchronize ChartXY with MapChart view.
       this.mapChart.onViewChange((view) => {
         const { latitudeRange, longitudeRange, margin } = view;
-
+        this.latRange = latitudeRange;
+        this.lonRange = longitudeRange;
         this.chart
           .getDefaultAxisX()
           .setInterval(longitudeRange.start, longitudeRange.end, false, true);
@@ -148,10 +140,17 @@ export default {
         this.chart.setPadding(0);
       });
 
-      this.legend = this.chart
-        .addLegendBox()
-        .add(this.chart)
-        .setPosition({ x: 100, y: 50 });
+      this.chart.onSeriesBackgroundMouseClick(() => {
+        this.zoomToFit();
+      });
+
+      this.chart.onSeriesBackgroundMouseDrag(() => {
+        this.setDrag();
+      });
+
+      this.chart.onSeriesBackgroundMouseDoubleClick(() => {
+        this.zoomOutToMap();
+      });
 
       // Style Map div
       const divMap = document.getElementById(`${this.mapId}`);
@@ -172,6 +171,78 @@ export default {
       divOverlay.style.top = '0px';
       divOverlay.style.zIndex = '2';
       this.chart.engine.layout();
+
+      // add instructional text
+      this.chart
+        .addUIElement(UIElementBuilders.TextBox)
+        .setTextFont((font) => font.setSize(10))
+        .setOrigin(UIOrigins.LeftBottom)
+        .setPosition({ x: 5, y: 90 })
+        .setText('Left click to zoom in to glider trajectory.');
+      this.chart
+        .addUIElement(UIElementBuilders.TextBox)
+        .setTextFont((font) => font.setSize(10))
+        .setOrigin(UIOrigins.LeftBottom)
+        .setPosition({ x: 5, y: 80 })
+        .setText('Double click to zoom out to map.');
+
+      // add data line for points
+      this.addPointsToCharts();
+    },
+    addPointsToCharts() {
+      // add legend
+      if (this.legend) {
+        this.legend.dispose();
+        this.legend = undefined;
+      }
+      this.legend = this.chart
+        .addLegendBox()
+        .add(this.chart)
+        .setPosition({ x: 100, y: 50 });
+      // add line
+      if (this.pointsSeries) {
+        this.pointsSeries.dispose();
+        this.pointsSeries = undefined;
+      }
+      this.pointsSeries = this.chart
+        .addPointSeries({ pointShape: PointShape.Circle })
+        .setPointSize(5)
+        .setName('Depth')
+        .setPointFillStyle(
+          new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
+        )
+        .setIndividualPointValueEnabled(true);
+
+      this.points.forEach((v) => {
+        this.pointsSeries.add({
+          x: v.x,
+          y: v.y,
+          value: v.value,
+        });
+      });
+    },
+    setDrag() {
+      this.drag = true;
+    },
+    zoomToFit() {
+      if (this.drag) {
+        this.drag = false;
+      } else {
+        this.chart.engine.setBackgroundFillStyle(
+          new SolidFill({ color: ColorRGBA(25, 25, 25) }) // background
+        );
+        this.chart.getDefaultAxisX().fit();
+        this.chart.getDefaultAxisY().fit();
+      }
+    },
+    zoomOutToMap() {
+      this.chart
+        .getDefaultAxisX()
+        .setInterval(this.lonRange.start, this.lonRange.end, false, true);
+      this.chart
+        .getDefaultAxisY()
+        .setInterval(this.latRange.start, this.latRange.end, false, true);
+      this.chart.engine.setBackgroundFillStyle(transparentFill);
     },
   },
 };

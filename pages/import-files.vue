@@ -198,6 +198,7 @@
  * add speed nc variable
  * standalone build-https://www.sitepoint.com/bundle-static-site-webpack/
  * overlap data
+ * adding data in middle doesn't work (i.e. adding 5 when 4 and 6 are already loaded)
  *
  */
 
