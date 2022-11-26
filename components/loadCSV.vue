@@ -1,8 +1,9 @@
 <template>
   <!-- File List -->
   <div class="file-holder">
-    <label
-      >{{ fileType }} Files:
+    <label>
+      You can load a csv file of timestamps associated with the audio files. If
+      no file is loaded, the timestamps will default to the file name.
       <!-- Add Files -->
       <v-btn
         v-if="!hideButtons"
@@ -11,16 +12,10 @@
         @dragover.prevent
         @click="openFileExplorer()"
       >
-        <v-icon color="primary">mdi-folder-upload-outline</v-icon> Drag one or
-        more files here to import or click to open file explorer.
+        <v-icon color="primary">mdi-folder-upload-outline</v-icon>
+        Drag CSV file here to import or click to open file explorer.
       </v-btn>
-      <input
-        id="files"
-        ref="files"
-        type="file"
-        multiple
-        @change="handleFilesUpload()"
-      />
+      <input id="files" ref="files" type="file" @change="handleFilesUpload()" />
     </label>
     <div>
       <div v-for="(file, key) in innerFiles" :key="key">
@@ -73,7 +68,6 @@ export default {
       innerFiles: [],
     };
   },
-
   methods: {
     /**
      * Open file explorer to add files
@@ -81,21 +75,29 @@ export default {
     openFileExplorer() {
       this.$refs.files.click();
     },
+
     /**
      * Add files to app
      */
     addFiles(files) {
-      for (let i = 0; i < files.length; i++) {
-        this.innerFiles.push(files[i]);
-      }
-      this.innerFiles.sort((a, b) => {
-        if (a.name < b.name) {
-          return -1;
-        } else if (a.name > b.name) {
-          return 1;
-        } else return 0;
-      });
-      this.$emit('update:files', this.innerFiles);
+      const reader = new FileReader();
+      const self = this;
+      reader.onload = function (e) {
+        const str = e.target.result;
+        // removes the text header from the first line if there is one
+        // slice from \n index + 1 to the end of the text
+        // use split to create an array of each csv value row
+        const rows = str.split('\n');
+        const rows2 = rows.map((v) => {
+          // remove the \r at the end of each number and make it an integer
+          return parseInt(v.slice(0, v.indexOf('\r')));
+        });
+        if (isNaN(rows2[0])) rows2.shift();
+        // return the contents of the file
+        self.$emit('update:files', rows2);
+      };
+      this.innerFiles = files;
+      reader.readAsText(files[0]);
     },
     /**
      * Removes a select file the user has uploaded
@@ -180,13 +182,10 @@ export default {
 
 <style scoped>
 .file-holder {
-  height: 30vh;
-  max-height: 30vh;
-  overflow-y: scroll;
+  height: 20vh;
 }
 #drop_zone {
   border: 5px solid #00dc82;
-  width: 95%;
   height: 60px;
 }
 </style>

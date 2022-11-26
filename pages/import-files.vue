@@ -46,11 +46,10 @@
             >
             <v-dialog v-model="dialog" width="500">
               <template #activator="{ on, attrs }">
-                <v-btn color="primary" v-bind="attrs" v-on="on">
+                <v-btn color="primary" class="ml-1" v-bind="attrs" v-on="on">
                   FFT Parameters
                 </v-btn>
               </template>
-
               <v-card>
                 <v-card-title class="text-h5"> FFT Parameters </v-card-title>
                 <v-card-text>
@@ -89,6 +88,34 @@
                 </v-card-actions>
               </v-card>
             </v-dialog>
+            <!-- Load timestamp csv -->
+            <v-dialog v-model="dialog2">
+              <template #activator="{ on, attrs }">
+                <v-btn color="primary" class="ml-1" v-bind="attrs" v-on="on">
+                  Load Timestamps
+                </v-btn>
+              </template>
+              <v-card>
+                <v-card-title class="text-h5">
+                  Load Timestamp CSV File
+                </v-card-title>
+                <v-card-text>
+                  <!-- CSV Files -->
+                  <load-csv
+                    :allowed-extensions="/(\.csv)$/i"
+                    :files.sync="csvFiles"
+                    :hide-buttons="loading"
+                  />
+                </v-card-text>
+                <v-card-actions>
+                  <v-spacer></v-spacer>
+                  <v-btn color="primary" text @click="dialog2 = false">
+                    Submit
+                  </v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
+
             <!-- Loading -->
             <span v-if="loading">Loading...</span>
           </div>
@@ -181,7 +208,7 @@
  * handle missing netCDF variables
  * DONE-make heatmap range (decibel range) user prop
  * what happens when you remove last file
- * Load audio start time from inputable look up table or read .cap file
+ * DONE-Load audio start time from inputable look up table or read .cap file
  * DONE-highlight selected file
  * DONE-lat lon on a map
  * add parameters to change spectrogram - nfft, overlap, window type
@@ -199,7 +226,7 @@
  * standalone build-https://www.sitepoint.com/bundle-static-site-webpack/
  * overlap data
  * adding data in middle doesn't work (i.e. adding 5 when 4 and 6 are already loaded)
- *
+ * removing last file doesn't let you add a new "first file"
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -208,6 +235,7 @@ import Trajectory from '@/components/chartxy.vue';
 import Heatmap from '@/components/heatmap.vue';
 import Geo from '@/components/geo.vue';
 import LoadFiles from '@/components/loadFiles.vue';
+import LoadCsv from '@/components/loadCSV.vue';
 import {
   getNetCDFVariables,
   loadAudioData,
@@ -219,12 +247,14 @@ export default {
     Trajectory,
     Heatmap,
     LoadFiles,
+    LoadCsv,
     Geo,
   },
   data() {
     return {
       dialog: false,
-      nfftOptions: [256, 512, 2048, 4096, 8192, 16384],
+      dialog2: false,
+      nfftOptions: [256, 512, 1024, 2048, 4096, 8192, 16384],
       nfftSelected: 2048,
       sampleRateInput: 128000,
       minDecibelInput: -160,
@@ -257,6 +287,7 @@ export default {
       audioFiles: [],
       ncFiles: [],
       ncData: [],
+      csvFiles: [],
       readVar: { name: '', variable: null },
       gliderData: [], // [{ time: [], latitude: [], longitude: [], depth: [] }], // length num files
       gliderDepth: [],
@@ -267,6 +298,7 @@ export default {
         /**
          * The resolution of the FFT calculations - NFFT
          * Higher value means higher resolution decibel domain.
+         * 2048 ~62-64
          * 4096 gives freq res of 31-32Hz
          * 8192 gives 15-16Hz
          */
@@ -484,12 +516,11 @@ export default {
         const file = this.audioFiles[i];
         console.log('load ', i);
         await loadAudioData(file, this.config).then((v) => {
-          // TODO: make option to load time from inputable look up table or read .cap file
-          const csvTimestamps = [
-            1569338218, 1569338615, 1569341097, 1569341877, 1569343447,
-            1569344206,
-          ];
-          v.startTime = getStartTimeFromFilename(file.name);
+          if (this.csvFiles.length > 0) {
+            v.startTime = this.csvFiles[i];
+          } else {
+            v.startTime = getStartTimeFromFilename(file.name);
+          }
           data.push(v);
         });
       }
