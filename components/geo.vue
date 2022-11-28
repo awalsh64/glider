@@ -90,7 +90,6 @@ export default {
   },
   methods: {
     createTurbo() {
-      console.log(this.maxDepth);
       const steps = getTurboSteps(0, this.maxDepth, 0, this.maxDepth);
       this.turbo = new LUT({
         units: 'feet',
@@ -126,6 +125,7 @@ export default {
         .setTitle('Geo Location')
         .setBackgroundFillStyle(transparentFill)
         .setSeriesBackgroundFillStyle(transparentFill)
+        .setAnimationsEnabled(false)
         .setMouseInteractionWheelZoom(false);
       this.chart.engine.setBackgroundFillStyle(transparentFill);
 
@@ -252,16 +252,18 @@ export default {
           x: v.x,
           y: v.y,
           value: v.value,
+          speed: v.speed,
         });
       });
       this.pointsSeries.setCursorResultTableFormatter(
-        (builder, _, x, y, value) =>
-          builder
+        (builder, _, x, y, value) => {
+          return builder
             .addRow('Glider Trajectory')
             .addRow('latitude:', '', y.toFixed(4) + '  deg')
             .addRow('longitude:', '', x.toFixed(4) + ' deg')
             .addRow('depth:', '', value.value.toFixed(2) + ' ft')
-        // .addRow('speed:','', value.speed + ' ')
+            .addRow('speed:', '', value.speed.toFixed(2) + ' ft/s');
+        }
       );
 
       // add legend

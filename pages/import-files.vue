@@ -503,6 +503,7 @@ export default {
           'temperature',
           'salinity_raw',
           'sound_velocity',
+          'speed',
         ]).then((v) => {
           // TODO: change variables to object to avoid wrong indexing
           // Documentation: https://www.digitalocean.com/community/tutorials/understanding-date-and-time-in-javascript
@@ -545,19 +546,20 @@ export default {
 
           const tempSalinityData = oneDive.map((dive, i) => {
             return {
-              x: dive.x,
+              x: dive.x, // time
               y: v[this.temperatureIndex][i],
               z: v[this.salinityIndex][i],
-              value: dive.value,
+              value: dive.value, // sound speed
             };
           });
           tempSalData = tempSalData.concat(tempSalinityData);
 
           const latitudeLongitude = oneDive.map((dive, i) => {
             return {
-              x: v[this.longitudeIndex][i],
-              y: v[this.latitudeIndex][i],
+              x: v[this.longitudeIndex][i], // longitude
+              y: v[this.latitudeIndex][i], // latitude
               value: dive.y, // depth
+              speed: v[8][i], // speed
             };
           });
           latLonData = latLonData.concat(latitudeLongitude);
