@@ -27,7 +27,7 @@
                   Load Bathy
                 </v-btn>
               </template>
-              <v-card>
+              <v-card class="bathy-window">
                 <v-card-title class="text-h5"> Load Bathy File </v-card-title>
                 <v-card-text>
                   <!-- Bathy NetCDF File -->
@@ -36,9 +36,13 @@
                     :files.sync="bathyFiles"
                     :hide-buttons="loading"
                     file-type="NetCDF"
+                    single-file
                   />
                 </v-card-text>
-                <v-card-text> Enter NetCDF Variable Names </v-card-text>
+                <v-card-text>
+                  Enter NetCDF Variable Names. Defaults are for
+                  download.gebco.net.
+                </v-card-text>
                 <v-card-text>
                   <v-text-field
                     v-model="latitudeName"
@@ -442,35 +446,36 @@ export default {
   },
   methods: {
     async loadBathy() {
-      console.log('load bathy');
-      const file = URL.createObjectURL(this.bathyFiles[0]);
-      const bathyData = [];
-      let maxDepth = this.maxDepth;
-      await getNetCDFVariables(file, [
-        this.longitudeName,
-        this.latitudeName,
-        this.elevationName,
-      ]).then((v) => {
-        const x = v[0]; // longitude
-        const y = v[1]; // latitude
-        const z = v[2]; // elevation
-        let zCounter = 0;
-        for (let i = 0; i < y.length; i++) {
-          for (let j = 0; j < x.length; j++) {
-            const depth = this.depthPositive * z[zCounter]; // depth = elevation * -1
-            maxDepth = Math.max(maxDepth, depth);
-            bathyData.push({
-              x: x[j],
-              y: y[i],
-              value: depth,
-            });
-            zCounter++;
+      if (this.bathyFiles.length > 0) {
+        console.log('load bathy');
+        const file = URL.createObjectURL(this.bathyFiles[0]);
+        const bathyData = [];
+        let maxDepth = this.maxDepth;
+        await getNetCDFVariables(file, [
+          this.longitudeName,
+          this.latitudeName,
+          this.elevationName,
+        ]).then((v) => {
+          const x = v[0]; // longitude
+          const y = v[1]; // latitude
+          const z = v[2]; // elevation
+          let zCounter = 0;
+          for (let i = 0; i < y.length; i++) {
+            for (let j = 0; j < x.length; j++) {
+              const depth = this.depthPositive * z[zCounter]; // depth = elevation * -1
+              maxDepth = Math.max(maxDepth, depth);
+              bathyData.push({
+                x: x[j],
+                y: y[i],
+                value: depth,
+              });
+              zCounter++;
+            }
           }
-        }
-        this.bathyPoints = bathyData;
-        this.maxDepth = maxDepth;
-      });
-
+          this.bathyPoints = bathyData;
+          this.maxDepth = maxDepth;
+        });
+      }
       // close dialog
       this.dialog3 = false;
     },
@@ -674,5 +679,9 @@ span.select-file {
 
 #audio {
   width: 98vw;
+}
+
+.bathy-window {
+  overflow-x: hidden;
 }
 </style>

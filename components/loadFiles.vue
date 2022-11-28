@@ -1,8 +1,9 @@
 <template>
   <!-- File List -->
   <div class="file-holder">
-    <label
-      >{{ fileType }} Files:
+    <label>
+      <span v-if="singleFile">{{ fileType }} File:</span>
+      <span v-else>{{ fileType }} Files:</span>
       <!-- Add Files -->
       <v-btn
         v-if="!hideButtons"
@@ -11,14 +12,19 @@
         @dragover.prevent
         @click="openFileExplorer()"
       >
-        <v-icon color="primary">mdi-folder-upload-outline</v-icon> Drag one or
-        more files here to import or click to open file explorer.
+        <v-icon color="primary">mdi-folder-upload-outline</v-icon>
+        <span v-if="singleFile"
+          >Drag file here to import or click to open file explorer.
+        </span>
+        <span v-else>
+          Drag one or more files here to import or click to open file explorer.
+        </span>
       </v-btn>
       <input
         id="files"
         ref="files"
         type="file"
-        multiple
+        :multiple="!singleFile"
         @change="handleFilesUpload()"
       />
     </label>
@@ -66,6 +72,10 @@ export default {
     showSelect: {
       type: Number,
       default: 0,
+    },
+    singleFile: {
+      type: Boolean,
+      default: false,
     },
   },
   data() {
