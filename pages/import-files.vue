@@ -20,6 +20,60 @@
             <v-btn v-if="!loading" color="primary" @click="readNetCDF()"
               >Read NetCDF</v-btn
             >
+            <!-- Load bathy -->
+            <v-dialog v-model="dialog3">
+              <template #activator="{ on, attrs }">
+                <v-btn color="primary" class="ml-1" v-bind="attrs" v-on="on">
+                  Load Bathy
+                </v-btn>
+              </template>
+              <v-card>
+                <v-card-title class="text-h5"> Load Bathy File </v-card-title>
+                <v-card-text>
+                  <!-- Bathy NetCDF File -->
+                  <load-files
+                    :allowed-extensions="/(\.nc|\.netCDF)$/i"
+                    :files.sync="bathyFiles"
+                    :hide-buttons="loading"
+                    file-type="NetCDF"
+                  />
+                </v-card-text>
+                <v-card-text> Enter NetCDF Variable Names </v-card-text>
+                <v-card-text>
+                  <v-text-field
+                    v-model="latitudeName"
+                    label="latitude"
+                    clearable
+                  ></v-text-field>
+                  <v-text-field
+                    v-model="longitudeName"
+                    label="longitude"
+                    clearable
+                  ></v-text-field>
+                  <v-text-field
+                    v-model="elevationName"
+                    label="elevation"
+                    clearable
+                  ></v-text-field>
+                  <v-radio-group v-model="depthPositive">
+                    <v-radio
+                      :label="`Positive Above Sea Level`"
+                      :value="-1"
+                    ></v-radio>
+                    <v-radio
+                      :label="`Positive Below Sea Level`"
+                      :value="1"
+                    ></v-radio>
+                  </v-radio-group>
+                </v-card-text>
+                <v-card-actions>
+                  <v-spacer></v-spacer>
+                  <v-btn color="primary" text @click="loadBathy">
+                    Submit
+                  </v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
             <span v-if="loading">Loading...</span>
           </p>
         </v-expansion-panel-content>
@@ -124,7 +178,11 @@
     </v-expansion-panels>
 
     <div class="map-holder">
-      <geo :points="latLonData"></geo>
+      <geo
+        :points="latLonData"
+        :bathy-points="bathyPoints"
+        :max-depth="maxDepth"
+      ></geo>
     </div>
 
     <!-- Trajectory Plot -->
@@ -252,8 +310,14 @@ export default {
   },
   data() {
     return {
+      depthPositive: -1,
+      latitudeName: 'lat',
+      longitudeName: 'lon',
+      elevationName: 'elevation',
+      maxDepth: 1,
       dialog: false,
       dialog2: false,
+      dialog3: false,
       nfftOptions: [256, 512, 1024, 2048, 4096, 8192, 16384],
       nfftSelected: 2048,
       sampleRateInput: 128000,
@@ -288,6 +352,8 @@ export default {
       ncFiles: [],
       ncData: [],
       csvFiles: [],
+      bathyFiles: [],
+      bathyPoints: [],
       readVar: { name: '', variable: null },
       gliderData: [], // [{ time: [], latitude: [], longitude: [], depth: [] }], // length num files
       gliderDepth: [],
@@ -375,6 +441,39 @@ export default {
     },
   },
   methods: {
+    async loadBathy() {
+      console.log('load bathy');
+      const file = URL.createObjectURL(this.bathyFiles[0]);
+      const bathyData = [];
+      let maxDepth = this.maxDepth;
+      await getNetCDFVariables(file, [
+        this.longitudeName,
+        this.latitudeName,
+        this.elevationName,
+      ]).then((v) => {
+        const x = v[0]; // longitude
+        const y = v[1]; // latitude
+        const z = v[2]; // elevation
+        let zCounter = 0;
+        for (let i = 0; i < y.length; i++) {
+          for (let j = 0; j < x.length; j++) {
+            const depth = this.depthPositive * z[zCounter]; // depth = elevation * -1
+            maxDepth = Math.max(maxDepth, depth);
+            bathyData.push({
+              x: x[j],
+              y: y[i],
+              value: depth,
+            });
+            zCounter++;
+          }
+        }
+        this.bathyPoints = bathyData;
+        this.maxDepth = maxDepth;
+      });
+
+      // close dialog
+      this.dialog3 = false;
+    },
     /**
      * Read Net CDF files and add trajectory path variables to gliderData
      */
@@ -385,6 +484,7 @@ export default {
       let tempSalData = [];
       let latLonData = [];
       let startTime = 0;
+      let maxDepth = this.maxDepth;
       // only read new files
       for (let i = this.gliderData.length; i < this.ncFiles.length; i++) {
         console.log('load file ', i);
@@ -414,9 +514,11 @@ export default {
           // create glider depth profile
           const time = v[this.ctdTimeIndex];
           const oneDive = time.map((x, i) => {
+            const depth = v[this.depthIndex][i];
+            maxDepth = Math.max(maxDepth, depth);
             const T = v[this.temperatureIndex][i]; // Celcius
             const S = v[this.salinityIndex][i]; // ppt
-            const D = v[this.depthIndex][i] * 0.3048; // meters
+            const D = depth * 0.3048; // meters
             const soundSpeed =
               1448.96 +
               4.591 * T -
@@ -430,7 +532,7 @@ export default {
             // reference: K.V. Mackenzie, Nine-term equation for the sound speed in the oceans (1981) J. Acoust. Soc. Am. 70(3), pp 807-812
             return {
               x: x - startTime, // time milliseconds
-              y: v[this.depthIndex][i], // depth
+              y: depth, // depth
               value: soundSpeed, // sound speed
             };
           });
@@ -465,6 +567,7 @@ export default {
       this.startDate = new Date(
         startTime + new Date(startTime * 1000).getTimezoneOffset() * 60000
       );
+      this.maxDepth = maxDepth;
       this.ncFileSelected = this.ncFiles.length - 1;
       this.numNCLoaded = this.ncFiles.length;
       this.loading = false;

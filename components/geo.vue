@@ -10,11 +10,9 @@
 // dispose data when new data loaded
 import {
   lightningChart,
-  AxisTickStrategies,
   PointShape,
   PalettedFill,
   LUT,
-  emptyLine,
   MapTypes,
   transparentFill,
   Themes,
@@ -31,6 +29,16 @@ export default {
     points: {
       type: Array,
       required: true,
+    },
+    bathyPoints: {
+      type: Array,
+      default: () => {
+        return [];
+      },
+    },
+    maxDepth: {
+      type: Number,
+      default: 1000,
     },
   },
   data() {
@@ -49,20 +57,16 @@ export default {
       latRange: { start: 0, end: 0 },
       lonRange: { start: 0, end: 0 },
       pointsSeries: undefined,
+      bathyPointsSeries: undefined,
+      turbo: {},
     };
-  },
-  computed: {
-    turbo() {
-      const steps = getTurboSteps(0, 1000, 0, 1000);
-      return new LUT({
-        units: 'feet',
-        steps,
-        interpolate: false,
-      });
-    },
   },
   watch: {
     points() {
+      this.addPointsToCharts();
+      this.zoomOutToMap();
+    },
+    bathyPoints() {
       this.addPointsToCharts();
       this.zoomOutToMap();
     },
@@ -85,6 +89,15 @@ export default {
     this.mapChart = undefined;
   },
   methods: {
+    createTurbo() {
+      console.log(this.maxDepth);
+      const steps = getTurboSteps(0, this.maxDepth, 0, this.maxDepth);
+      this.turbo = new LUT({
+        units: 'feet',
+        steps,
+        interpolate: false,
+      });
+    },
     createChart() {
       console.log('create geo');
 
@@ -127,7 +140,7 @@ export default {
 
       // Synchronize ChartXY with MapChart view.
       this.mapChart.onViewChange((view) => {
-        const { latitudeRange, longitudeRange, margin } = view;
+        const { latitudeRange, longitudeRange } = view;
         this.latRange = latitudeRange;
         this.lonRange = longitudeRange;
         this.chart
@@ -177,28 +190,49 @@ export default {
         .addUIElement(UIElementBuilders.TextBox)
         .setTextFont((font) => font.setSize(10))
         .setOrigin(UIOrigins.LeftBottom)
-        .setPosition({ x: 5, y: 90 })
+        .setPosition({ x: 8, y: 90 })
         .setText('Left click to zoom in to glider trajectory.');
       this.chart
         .addUIElement(UIElementBuilders.TextBox)
         .setTextFont((font) => font.setSize(10))
         .setOrigin(UIOrigins.LeftBottom)
-        .setPosition({ x: 5, y: 80 })
+        .setPosition({ x: 8, y: 80 })
         .setText('Double click to zoom out to map.');
 
       // add data line for points
       this.addPointsToCharts();
     },
     addPointsToCharts() {
-      // add legend
-      if (this.legend) {
-        this.legend.dispose();
-        this.legend = undefined;
+      this.createTurbo();
+      // add bathy
+      if (this.bathyPoints.length > 0) {
+        if (this.bathyPointsSeries) this.bathyPointsSeries.dispose();
+        this.bathyPointsSeries = this.chart
+          .addPointSeries({ pointShape: PointShape.Circle })
+          .setPointSize(5)
+          .setName('Bathy Depth')
+          .setPointFillStyle(
+            new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
+          )
+          .setIndividualPointValueEnabled(true);
+
+        this.bathyPoints.forEach((v) => {
+          this.bathyPointsSeries.add({
+            x: v.x,
+            y: v.y,
+            value: v.value,
+          });
+        });
+
+        this.bathyPointsSeries.setCursorResultTableFormatter(
+          (builder, _, x, y, value) =>
+            builder
+              .addRow('Bathy Data')
+              .addRow('latitude:', '', y.toFixed(4) + '  deg')
+              .addRow('longitude:', '', x.toFixed(4) + ' deg')
+              .addRow('depth:', '', value.value + ' ft')
+        );
       }
-      this.legend = this.chart
-        .addLegendBox()
-        .add(this.chart)
-        .setPosition({ x: 100, y: 50 });
       // add line
       if (this.pointsSeries) {
         this.pointsSeries.dispose();
@@ -207,7 +241,7 @@ export default {
       this.pointsSeries = this.chart
         .addPointSeries({ pointShape: PointShape.Circle })
         .setPointSize(5)
-        .setName('Depth')
+        .setName('Glider Depth')
         .setPointFillStyle(
           new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
         )
@@ -220,6 +254,25 @@ export default {
           value: v.value,
         });
       });
+      this.pointsSeries.setCursorResultTableFormatter(
+        (builder, _, x, y, value) =>
+          builder
+            .addRow('Glider Trajectory')
+            .addRow('latitude:', '', y.toFixed(4) + '  deg')
+            .addRow('longitude:', '', x.toFixed(4) + ' deg')
+            .addRow('depth:', '', value.value.toFixed(2) + ' ft')
+        // .addRow('speed:','', value.speed + ' ')
+      );
+
+      // add legend
+      if (this.legend) {
+        this.legend.dispose();
+        this.legend = undefined;
+      }
+      this.legend = this.chart
+        .addLegendBox()
+        .add(this.chart)
+        .setPosition({ x: 100, y: 50 });
     },
     setDrag() {
       this.drag = true;
