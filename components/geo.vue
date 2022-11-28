@@ -92,7 +92,7 @@ export default {
     createTurbo() {
       const steps = getTurboSteps(0, this.maxDepth, 0, this.maxDepth);
       this.turbo = new LUT({
-        units: 'feet',
+        units: 'meters',
         steps,
         interpolate: false,
       });
@@ -230,7 +230,7 @@ export default {
               .addRow('Bathy Data')
               .addRow('latitude:', '', y.toFixed(4) + '  deg')
               .addRow('longitude:', '', x.toFixed(4) + ' deg')
-              .addRow('depth:', '', value.value + ' ft')
+              .addRow('depth:', '', value.value + ' m')
         );
       }
       // add line
@@ -261,8 +261,8 @@ export default {
             .addRow('Glider Trajectory')
             .addRow('latitude:', '', y.toFixed(4) + '  deg')
             .addRow('longitude:', '', x.toFixed(4) + ' deg')
-            .addRow('depth:', '', value.value.toFixed(2) + ' ft')
-            .addRow('speed:', '', value.speed.toFixed(2) + ' ft/s');
+            .addRow('depth:', '', value.value.toFixed(2) + ' m')
+            .addRow('speed:', '', value.speed.toFixed(2) + ' cm/s');
         }
       );
 

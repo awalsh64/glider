@@ -495,15 +495,15 @@ export default {
         console.log('load file ', i);
         const file = URL.createObjectURL(this.ncFiles[i]);
         await getNetCDFVariables(file, [
-          'ctd_time',
-          'ctd_depth',
-          'depth',
-          'latitude',
-          'longitude',
-          'temperature',
-          'salinity_raw',
-          'sound_velocity',
-          'speed',
+          'ctd_time', // unix timestamp - seconds since 1970-1-1 00:00:00
+          'ctd_depth', // meters
+          'depth', // meters
+          'latitude', // deg
+          'longitude', // deg
+          'temperature', // deg Celsius
+          'salinity_raw', // ppt
+          'sound_velocity', // m/s
+          'speed', // cm/s
         ]).then((v) => {
           // TODO: change variables to object to avoid wrong indexing
           // Documentation: https://www.digitalocean.com/community/tutorials/understanding-date-and-time-in-javascript
@@ -520,11 +520,11 @@ export default {
           // create glider depth profile
           const time = v[this.ctdTimeIndex];
           const oneDive = time.map((x, i) => {
-            const depth = v[this.depthIndex][i];
+            const depth = v[this.depthIndex][i]; // meters
             maxDepth = Math.max(maxDepth, depth);
             const T = v[this.temperatureIndex][i]; // Celcius
             const S = v[this.salinityIndex][i]; // ppt
-            const D = depth * 0.3048; // meters
+            const D = depth; // meters
             const soundSpeed =
               1448.96 +
               4.591 * T -

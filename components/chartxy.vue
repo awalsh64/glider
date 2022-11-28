@@ -141,7 +141,7 @@ export default {
       this.chart
         .getDefaultAxisY()
         .setAnimationScroll(undefined)
-        .setTitle('Depth (ft)')
+        .setTitle('Depth (meters)')
         .setInterval(1, -1);
 
       // Disable default auto cursor.
@@ -386,7 +386,7 @@ export default {
               .formatValue(nearestDataPoints[i].location.x)}`
           );
           const titles = ['Depth', 'Temp', 'Salinity'];
-          const units = ['feet', '°C', 'ppt'];
+          const units = ['m', '°C', 'ppt'];
           rowsY.forEach((rowY, i) => {
             let chart = i;
             if (i > 1) chart = 1;
