@@ -499,10 +499,13 @@ export default {
      * Add markers for spectrogram start time
      */
     addTimeMarkers() {
-      for (let i = 0; i < this.timeMarkerLine.length; i++) {
-        // remove previously made lines
-        this.timeMarkerLine[i].dispose();
-        this.timeMarkerLine[i] = undefined;
+      if (this.timeMarkerLine) {
+        for (let i = 0; i < this.timeMarkerLine.length; i++) {
+          // remove previously made lines
+          this.timeMarkerLine[i].dispose();
+          this.timeMarkerLine[i] = undefined;
+        }
+        this.timeMarkerLine = [];
       }
       for (let i = 0; i < this.spectrograms.length; i++) {
         const x = this.spectrograms[i].startTime - dateToHMS(this.startDate);

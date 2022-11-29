@@ -253,7 +253,7 @@
  * DONE-GMT time
  * DONE-temperature and salinity profile
  * DONE - time scrolling line with audio player
- * import bathymetry
+ * DONE- import bathymetry
  * DONE-get new improved colormap > jet Turbo
  * DONE-depth vs. ctd_depth - change depthData variable index - depth_ctd is better!!!
  * overlays - bathy, sea surface temp, chlorophyl (how to import, file type)
@@ -284,7 +284,7 @@
  * network attached storage or google drive?
  * link geo to trajectory plot and spectrogram
  * collapse plots
- * add speed nc variable
+ * DONE-add speed nc variable
  * standalone build-https://www.sitepoint.com/bundle-static-site-webpack/
  * overlap data
  * adding data in middle doesn't work (i.e. adding 5 when 4 and 6 are already loaded)
@@ -364,7 +364,24 @@ export default {
       tempSalData: [],
       latLonData: [],
       startDate: new Date(),
-      config: {
+      resolution: {
+        x: 1000,
+        y: 1000,
+      },
+      variables: [],
+      currentConfig: {
+        fftResolution: this.nfftSelected,
+        smoothingTimeConstant: 0,
+        processorBufferSize: 2048,
+        sampleRate: this.sampleRateInput,
+        minDecibels: this.minDecibelInput,
+        maxDecibels: this.maxDecibelInput,
+      },
+    };
+  },
+  computed: {
+    config() {
+      return {
         /**
          * The resolution of the FFT calculations - NFFT
          * Higher value means higher resolution decibel domain.
@@ -372,7 +389,7 @@ export default {
          * 4096 gives freq res of 31-32Hz
          * 8192 gives 15-16Hz
          */
-        fftResolution: 512,
+        fftResolution: this.nfftSelected,
         /**
          * Smoothing value for FFT calculations
          */
@@ -388,18 +405,12 @@ export default {
          * sampling rate for audio data in Hz
          * this should match the recorded sample rate of the wav file
          */
-        sampleRate: 128000,
-        minDecibels: -160,
-        maxDecibels: -60,
-      },
-      resolution: {
-        x: 1000,
-        y: 1000,
-      },
-      variables: [],
-    };
+        sampleRate: this.sampleRateInput,
+        minDecibels: this.minDecibelInput,
+        maxDecibels: this.maxDecibelInput,
+      };
+    },
   },
-  computed: {},
   watch: {
     fileSelected() {
       // add sound to audio player
@@ -606,14 +617,11 @@ export default {
           to the form data.
         */
       this.loading = true;
-      this.config = {
-        fftResolution: this.nfftSelected,
-        smoothingTimeConstant: 0,
-        processorBufferSize: 2048,
-        sampleRate: this.sampleRateInput,
-        minDecibels: this.minDecibelInput,
-        maxDecibels: this.maxDecibelInput,
-      };
+      if (this.currentConfig !== this.config) {
+        // reprocess spectrograms
+        this.currentConfig = this.config;
+        this.spectrogramData = [];
+      }
       console.log('audioFiles ', this.audioFiles);
       const data = [];
       for (
