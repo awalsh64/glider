@@ -113,9 +113,13 @@ export default {
     removeFile(key) {
       this.innerFiles.splice(key, 1);
       this.$emit('update:files', this.innerFiles);
+      this.$emit('index-removed', key);
       if (this.fileSelected === key) {
-        this.select(this.fileSelected);
-        // TODO: This won't trigger a replot when fileSelected===0 because fileSelected isn't changing
+        // if removing current selection, select previous file
+        if (this.innerFiles.length === 0 || this.fileSelected > 0) {
+          this.select(this.fileSelected - 1);
+        }
+        // unless there is only one file left in the list, the index will still be 0
       }
     },
     /**
@@ -128,6 +132,7 @@ export default {
      * Handles the uploading of files
      */
     handleFilesUpload() {
+      // TODO: does not get triggered if you remove and add same file
       const uploadedFiles = this.$refs.files.files;
       // Adds the uploaded file to the files array
       const files = [];
@@ -143,7 +148,6 @@ export default {
      */
     checkFileType(newFile) {
       if (!this.allowedExtensions.exec(newFile.name)) {
-        console.log(newFile.name);
         alert('Invalid file type');
         return false;
       } else {

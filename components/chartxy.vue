@@ -160,11 +160,12 @@ export default {
         )
         // Add data points to the line series
         .add(this.points);
-
-      this.legend = this.chart
-        .addLegendBox()
-        .add(this.chart)
-        .setPosition({ x: 100, y: 50 });
+      if (this.points.length > 0) {
+        this.legend = this.chart
+          .addLegendBox()
+          .add(this.chart)
+          .setPosition({ x: 100, y: 50 });
+      }
 
       /// //// Temperature and Salinity Chart
 

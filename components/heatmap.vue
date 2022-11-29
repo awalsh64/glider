@@ -45,10 +45,6 @@ export default {
       type: Number,
       default: 1,
     },
-    index: {
-      type: Number,
-      default: 0,
-    },
     spectrogram: {
       type: Object,
       default: () => {
@@ -94,16 +90,13 @@ export default {
     },
   },
   watch: {
+    spectrogram() {
+      this.addDataToChart();
+      this.currentTimeLine.setValue(this.currentTime);
+    },
     selectedTime() {
       // this.setSelectedTime();
       this.selectedTimeLine.setValue(this.selectedTime);
-    },
-    index() {
-      if (this.index < 0) return; // selected time before spectrogram start time
-      // this.createChart();
-      this.addDataToChart();
-      // this.setCurrentTime();
-      this.currentTimeLine.setValue(this.currentTime);
     },
     currentTime() {
       // this.setCurrentTime();
@@ -232,6 +225,8 @@ export default {
           );
         console.log('spectrogram added');
       }
+      this.chart.getDefaultAxisX().fit();
+      this.chart.getDefaultAxisY().fit();
     },
     setSelectedTime() {
       // Add a Constantline to the X Axis

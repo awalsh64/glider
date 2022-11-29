@@ -271,10 +271,12 @@ export default {
         this.legend.dispose();
         this.legend = undefined;
       }
-      this.legend = this.chart
-        .addLegendBox()
-        .add(this.chart)
-        .setPosition({ x: 100, y: 50 });
+      if (this.bathyPoints.length > 0 || this.points.length > 0) {
+        this.legend = this.chart
+          .addLegendBox()
+          .add(this.chart)
+          .setPosition({ x: 100, y: 50 });
+      }
     },
     setDrag() {
       this.drag = true;

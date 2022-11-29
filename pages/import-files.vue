@@ -21,7 +21,7 @@
               >Read NetCDF</v-btn
             >
             <!-- Load bathy -->
-            <v-dialog v-model="dialog3">
+            <v-dialog v-if="!loading" v-model="dialog3">
               <template #activator="{ on, attrs }">
                 <v-btn color="primary" class="ml-1" v-bind="attrs" v-on="on">
                   Load Bathy
@@ -96,13 +96,14 @@
             file-type="Audio"
             :hide-buttons="loading"
             :show-select="numLoaded"
+            @index-removed="removeAudio($event)"
           />
           <div>
             <!-- Submit -->
             <v-btn v-if="!loading" color="primary" @click="submitAudioFiles()"
               >Process Files</v-btn
             >
-            <v-dialog v-model="dialog" width="500">
+            <v-dialog v-if="!loading" v-model="dialog" width="500">
               <template #activator="{ on, attrs }">
                 <v-btn color="primary" class="ml-1" v-bind="attrs" v-on="on">
                   FFT Parameters
@@ -147,7 +148,7 @@
               </v-card>
             </v-dialog>
             <!-- Load timestamp csv -->
-            <v-dialog v-model="dialog2">
+            <v-dialog v-if="!loading" v-model="dialog2">
               <template #activator="{ on, attrs }">
                 <v-btn color="primary" class="ml-1" v-bind="attrs" v-on="on">
                   Load Timestamps
@@ -212,10 +213,9 @@
     <div class="plot-holder">
       <heatmap
         :selected-time="selectedTime"
-        :index="fileSelected"
         :spectrogram="spectrogramData[fileSelected]"
-        :min-decibel="config.minDecibel"
-        :max-decibel="config.maxDecibel"
+        :min-decibel="currentConfig.minDecibel"
+        :max-decibel="currentConfig.maxDecibel"
         :current-time="currentTime"
       />
     </div>
@@ -276,7 +276,7 @@
  * add parameters to change spectrogram - nfft, overlap, window type
  * DONE-rainbow line for sound speed on trajectory
  * crashes if click nc chart while loading audio files because change fileSelected
- * add watchers to FFT Parameters and button
+ * DONE-add watchers to FFT Parameters and button
  * add overlay loading indicator
  * TODO 11/17:try higher sample rate
  * click spectrogram to play time
@@ -323,8 +323,8 @@ export default {
       dialog2: false,
       dialog3: false,
       nfftOptions: [256, 512, 1024, 2048, 4096, 8192, 16384],
-      nfftSelected: 2048,
-      sampleRateInput: 128000,
+      nfftSelected: 256, // TODO:2048
+      sampleRateInput: 32000, // TODO:128000,
       minDecibelInput: -160,
       maxDecibelInput: -60,
       rules: {
@@ -380,6 +380,9 @@ export default {
     };
   },
   computed: {
+    numAudioFiles() {
+      return this.audioFiles.length;
+    },
     config() {
       return {
         /**
@@ -412,29 +415,16 @@ export default {
     },
   },
   watch: {
+    numAudioFiles() {
+      if (this.fileSelected <= 0) {
+        // last file was removed, trigger reload because fileSelected index didn't change
+        this.loadSelectedAudioFile();
+      }
+    },
     fileSelected() {
-      // add sound to audio player
-      // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL
-      if (this.fileSelected < 0) return;
-      this.audioSrc = URL.createObjectURL(this.audioFiles[this.fileSelected]);
-      const sound = document.getElementById('audio');
-      sound.load();
-      this.selectedTime = this.spectrogramData[this.fileSelected].startTime;
-      this.currentTime = this.spectrogramData[this.fileSelected].startTime;
-      sound.addEventListener(
-        'timeupdate',
-        () => {
-          this.currentTime =
-            sound.currentTime * 1000 +
-            this.spectrogramData[this.fileSelected].startTime;
-        },
-        false
-      );
-
-      // const audioCtx = new AudioContext();
-      // const source = audioCtx.createMediaElementSource(sound);
-
-      console.log('file selected');
+      if (this.fileSelected >= 0) {
+        this.loadSelectedAudioFile();
+      }
     },
     selectedDate(v) {
       // find spectrogramData.startTime that starts closest to selectedTime
@@ -456,6 +446,36 @@ export default {
     },
   },
   methods: {
+    removeAudio(index) {
+      this.spectrogramData.splice(index, 1);
+      this.numLoaded--;
+    },
+    loadSelectedAudioFile() {
+      // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL
+      const sound = document.getElementById('audio');
+      if (this.fileSelected < 0) {
+        this.audioSrc = null;
+        sound.load();
+        return;
+      }
+      this.audioSrc = URL.createObjectURL(this.audioFiles[this.fileSelected]);
+      sound.load();
+      this.selectedTime = this.spectrogramData[this.fileSelected].startTime;
+      this.currentTime = this.spectrogramData[this.fileSelected].startTime;
+      sound.addEventListener(
+        'timeupdate',
+        () => {
+          if (this.fileSelected < 0) return;
+          this.currentTime =
+            sound.currentTime * 1000 +
+            this.spectrogramData[this.fileSelected].startTime;
+        },
+        false
+      );
+
+      // const audioCtx = new AudioContext();
+      // const source = audioCtx.createMediaElementSource(sound);
+    },
     async loadBathy() {
       if (this.bathyFiles.length > 0) {
         console.log('load bathy');
@@ -621,8 +641,8 @@ export default {
         // reprocess spectrograms
         this.currentConfig = this.config;
         this.spectrogramData = [];
+        this.fileSelected = -1;
       }
-      console.log('audioFiles ', this.audioFiles);
       const data = [];
       for (
         let i = this.spectrogramData.length;
@@ -633,7 +653,7 @@ export default {
         // wait for async function
         const file = this.audioFiles[i];
         console.log('load ', i);
-        await loadAudioData(file, this.config).then((v) => {
+        await loadAudioData(file, this.currentConfig).then((v) => {
           if (this.csvFiles.length > 0) {
             v.startTime = this.csvFiles[i];
           } else {
