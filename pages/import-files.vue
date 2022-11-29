@@ -433,16 +433,16 @@ export default {
       const secs = v.getSeconds();
       this.selectedTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
       const index = this.spectrogramData.findIndex((data) => {
-        // selected time < spectrogram start after current
+        // find index of closest spectrogram that starts before selected time
         return this.selectedTime < data.startTime;
       });
       // index-1 to get previous spectrogram
       if (index < 0) this.fileSelected = this.spectrogramData.length - 1;
       else this.fileSelected = index - 1;
-      if (this.spectrogramData.length < 1) return;
+      console.log('index', this.fileSelected);
+      if (this.spectrogramData.length < 1 || this.fileSelected < 0) return;
       this.selectedTime = this.spectrogramData[this.fileSelected].startTime;
       this.currentTime = this.spectrogramData[this.fileSelected].startTime;
-      console.log('index', this.fileSelected);
     },
   },
   methods: {
