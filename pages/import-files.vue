@@ -15,6 +15,7 @@
               file-type="NetCDF"
               :hide-buttons="loading"
               :show-select="numNCLoaded"
+              @index-removed="removeNC($event)"
             />
             <!-- Load NetCDF-->
             <v-btn v-if="!loading" color="primary" @click="readNetCDF()"
@@ -168,7 +169,7 @@
                 </v-card-text>
                 <v-card-actions>
                   <v-spacer></v-spacer>
-                  <v-btn color="primary" text @click="dialog2 = false">
+                  <v-btn color="primary" text @click="loadTimestamp">
                     Submit
                   </v-btn>
                 </v-card-actions>
@@ -296,6 +297,9 @@
  * add audio time line to nc plots (when audio file is loaded second)
  * reprocess when timestamp loaded
  * //TODO: remove duplicate files in loadFiles addFiles
+ * lightningchart too many active webgl contexts when reloading
+ * fix timestamp import time posixtodate
+ * mdi doesn't load offline
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -309,6 +313,7 @@ import {
   getNetCDFVariables,
   loadAudioData,
   getStartTimeFromFilename,
+  posixToDate,
 } from '@/components/import-functions.js';
 // File Upload Ex: https://serversideup.net/uploading-files-vuejs-axios/
 export default {
@@ -499,6 +504,11 @@ export default {
       // const audioCtx = new AudioContext();
       // const source = audioCtx.createMediaElementSource(sound);
     },
+    loadTimestamp() {
+      this.spectrogramData = [];
+      this.fileSelected = -1;
+      this.dialog2 = false;
+    },
     async loadBathy() {
       if (this.bathyFiles.length > 0) {
         console.log('load bathy');
@@ -534,10 +544,26 @@ export default {
       this.dialog3 = false;
     },
     /**
+     * reread all net cdf files when one is removed that has already been read
+     * this will not read files if removing file before it is read
+     */
+    removeNC(index) {
+      if (index < this.numNCLoaded) {
+        this.readNetCDF();
+      }
+    },
+    /**
      * Read Net CDF files and add trajectory path variables to gliderData
      */
     async readNetCDF() {
       this.loading = true;
+      // reset data because data is a continuous stream of points
+      this.gliderData = [];
+      this.gliderData = [];
+      this.gliderDepth = [];
+      this.tempSalData = [];
+      this.latLonData = [];
+
       const newData = [];
       let depthData = [];
       let tempSalData = [];
@@ -567,9 +593,10 @@ export default {
           newData.push(v);
 
           // get start time of all data
-          if (this.gliderData.length < 1)
+          if (this.gliderData.length < 1) {
             startTime = newData[0][this.ctdTimeIndex][0];
-          else startTime = this.gliderData[0][this.ctdTimeIndex][0];
+            console.log(startTime);
+          } else startTime = this.gliderData[0][this.ctdTimeIndex][0];
 
           // create glider depth profile
           const time = v[this.ctdTimeIndex];
@@ -678,7 +705,9 @@ export default {
         console.log('load ', i);
         await loadAudioData(file, this.currentConfig).then((v) => {
           if (this.csvFiles.length > 0) {
-            v.startTime = this.csvFiles[i];
+            v.startTime = posixToDate(this.csvFiles[i].toString());
+            console.log(v.startTime);
+            console.log(getStartTimeFromFilename(file.name));
           } else {
             v.startTime = getStartTimeFromFilename(file.name);
           }

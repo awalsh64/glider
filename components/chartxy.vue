@@ -111,6 +111,18 @@ export default {
         this.legend = undefined;
       }
 
+      if (this.chart) {
+        this.chart.dispose();
+        this.chart = undefined;
+      }
+      if (this.chart2) {
+        this.chart2.dispose();
+        this.chart2 = undefined;
+      }
+      if (this.dashboard) {
+        this.dashboard.dispose();
+        this.dashboard = undefined;
+      }
       // Create chartXY
       // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/dashboard.html#createchartxy
       this.dashboard = lightningChart().Dashboard({
