@@ -27,6 +27,7 @@ import {
   PalettedFill,
   LUT,
   emptyLine,
+  translatePoint,
   Themes,
   LegendBoxBuilders,
   AxisTickStrategies,
@@ -80,6 +81,9 @@ export default {
     };
   },
   computed: {
+    startTime() {
+      return this.spectrogram.startTime;
+    },
     turbo() {
       const steps = getTurboSteps(this.minDecibel, this.maxDecibel, 0, 255);
       return new LUT({
@@ -227,6 +231,24 @@ export default {
       }
       this.chart.getDefaultAxisX().fit();
       this.chart.getDefaultAxisY().fit();
+
+      // setup click listener
+      const startTime = this.spectrogram.startTime;
+      this.chart.offSeriesBackgroundMouseUp();
+      this.chart.onSeriesBackgroundMouseUp((_, event) => {
+        // Translate mouse location to Axis coordinate system.
+        const curLocationAxis = translatePoint(
+          this.chart.engine.clientLocation2Engine(event.clientX, event.clientY),
+          this.chart.engine.scale,
+          this.dataSeries.scale
+        );
+        // this.$emit(
+        //   'update:selected-time',
+        //   curLocationAxis.x - this.spectrogram.startTime
+        // );
+        console.log(startTime);
+        console.log(curLocationAxis.x - startTime);
+      });
     },
     setSelectedTime() {
       // Add a Constantline to the X Axis

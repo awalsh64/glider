@@ -260,7 +260,7 @@
  * show all spectrograms by scrolling down
  * upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
  * fix npm run build for path stuff	https://elpan.dev/en/deploy-nuxt-js-on-github-pages
- * Make spectrogram config parameters adjustable by user
+ * DONE-Make spectrogram config parameters adjustable by user
  * change getByteFrequencyData to getFloatFrequencyData if better precision needed, need to fix array remap
  * ask Mel where the whales are
  * Layout:
@@ -269,17 +269,17 @@
  * change netCDF variables to object to avoid wrong indexing, handle missing variables
  * handle missing netCDF variables
  * DONE-make heatmap range (decibel range) user prop
- * what happens when you remove last file
+ * DONE-what happens when you remove last file
  * DONE-Load audio start time from inputable look up table or read .cap file
  * DONE-highlight selected file
  * DONE-lat lon on a map
- * add parameters to change spectrogram - nfft, overlap, window type
+ * DONE-add parameters to change spectrogram - nfft, overlap, window type
  * DONE-rainbow line for sound speed on trajectory
  * crashes if click nc chart while loading audio files because change fileSelected
  * DONE-add watchers to FFT Parameters and button
  * add overlay loading indicator
  * TODO 11/17:try higher sample rate
- * click spectrogram to play time
+ * click spectrogram to play time ???can you set time of audio player???
  * label dive number and show number and time in readout
  * network attached storage or google drive?
  * link geo to trajectory plot and spectrogram
@@ -288,7 +288,14 @@
  * standalone build-https://www.sitepoint.com/bundle-static-site-webpack/
  * overlap data
  * adding data in middle doesn't work (i.e. adding 5 when 4 and 6 are already loaded)
- * removing last file doesn't let you add a new "first file"
+ * removing all files doesn't let you reload same file(s)
+ * add input for processing buffer
+ * remove NC files from plot data
+ * add hide NC files
+ * change audio start time line to shading (duration in seconds,convert to ms)
+ * add audio time line to nc plots (when audio file is loaded second)
+ * reprocess when timestamp loaded
+ * //TODO: remove duplicate files in loadFiles addFiles
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -432,17 +439,34 @@ export default {
       const minutes = v.getMinutes();
       const secs = v.getSeconds();
       this.selectedTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
+      console.log(this.selectedTime);
       const index = this.spectrogramData.findIndex((data) => {
-        // find index of closest spectrogram that starts before selected time
+        // find index of the spectrogram after selected time
         return this.selectedTime < data.startTime;
       });
-      // index-1 to get previous spectrogram
-      if (index < 0) this.fileSelected = this.spectrogramData.length - 1;
-      else this.fileSelected = index - 1;
+      // index-1 = spectrogram that starts before selected time
+      let newIndex = index - 1;
+      if (index < 0) {
+        // last spectrogram
+        newIndex = this.spectrogramData.length - 1;
+        if (
+          this.selectedTime >
+          this.spectrogramData[newIndex].startTime +
+            this.spectrogramData[newIndex].duration * 1000
+        ) {
+          // selected time is beyond last spectrogram duration
+          newIndex = -1;
+        }
+      }
+      if (this.fileSelected !== newIndex) {
+        // set new spectrogram if it is not the current selection
+        this.fileSelected = newIndex;
+        if (this.fileSelected >= 0) {
+          // reset play time
+          this.currentTime = this.spectrogramData[this.fileSelected].startTime;
+        }
+      }
       console.log('index', this.fileSelected);
-      if (this.spectrogramData.length < 1 || this.fileSelected < 0) return;
-      this.selectedTime = this.spectrogramData[this.fileSelected].startTime;
-      this.currentTime = this.spectrogramData[this.fileSelected].startTime;
     },
   },
   methods: {
@@ -460,7 +484,6 @@ export default {
       }
       this.audioSrc = URL.createObjectURL(this.audioFiles[this.fileSelected]);
       sound.load();
-      this.selectedTime = this.spectrogramData[this.fileSelected].startTime;
       this.currentTime = this.spectrogramData[this.fileSelected].startTime;
       sound.addEventListener(
         'timeupdate',

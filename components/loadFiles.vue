@@ -105,6 +105,7 @@ export default {
           return 1;
         } else return 0;
       });
+      // TODO: remove duplicate files
       this.$emit('update:files', this.innerFiles);
     },
     /**
