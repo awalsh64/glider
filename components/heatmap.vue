@@ -31,6 +31,9 @@ import {
   Themes,
   LegendBoxBuilders,
   AxisTickStrategies,
+  SolidFill,
+  SolidLine,
+  ColorHEX,
 } from '@arction/lcjs';
 
 import getTurboSteps from '@/components/turbo.js';
@@ -260,24 +263,18 @@ export default {
       // Position the Constantline in the Axis Scale
       this.selectedTimeLine.setValue(this.selectedTime);
       // The name of the Constantline will be shown in the LegendBox
-      this.selectedTimeLine.setName('Selected Time');
-      // TODO: change color
-      // emit drag time and set audio time or turn off drag
-
-      // if (this.selectedTimeLine) this.selectedTimeLine.dispose();
-      // this.selectedTimeLine = this.chart
-      //   .addLineSeries()
-      //   .setStrokeStyle(
-      //     (style) =>
-      //       style
-      //         .setThickness(10)
-      //         .setFillStyle(new SolidFill({ color: ColorHEX('#000000') })) // black
-      //   )
-      //   .setName('Selected Time')
-      //   .add([
-      //     { x: this.selectedTime, y: 0 },
-      //     { x: this.selectedTime, y: 64000 },
-      //   ]);
+      this.selectedTimeLine
+        .setName('Selected Time')
+        .setStrokeStyle(
+          new SolidLine({
+            thickness: 2,
+            fillStyle: new SolidFill({
+              color: ColorHEX('#FF00FF'), // magenta
+            }),
+          })
+        )
+        .setMouseInteractions(false);
+      // TODO:emit drag time and set audio time or turn off drag
     },
     setCurrentTime() {
       // Add a Constantline to the X Axis
@@ -289,7 +286,17 @@ export default {
       // Position the Constantline in the Axis Scale
       this.currentTimeLine.setValue(this.currentTime);
       // The name of the Constantline will be shown in the LegendBox
-      this.currentTimeLine.setName('Audio Time');
+      this.currentTimeLine
+        .setName('Audio Time')
+        .setStrokeStyle(
+          new SolidLine({
+            thickness: 2,
+            fillStyle: new SolidFill({
+              color: ColorHEX('#000000'), // black
+            }),
+          })
+        )
+        .setMouseInteractions(false);
       // TODO: change color
       // emit drag time and set audio time or turn off drag
 
