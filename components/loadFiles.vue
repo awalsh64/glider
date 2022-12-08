@@ -127,7 +127,7 @@ export default {
      * Select a file with the Select button
      */
     select(key) {
-      this.$emit('update:fileSelected', key);
+      this.$emit('update:file-selected', key);
     },
     /**
      * Handles the uploading of files

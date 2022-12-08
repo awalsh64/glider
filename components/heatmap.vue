@@ -245,10 +245,7 @@ export default {
           this.chart.engine.scale,
           this.dataSeries.scale
         );
-        // this.$emit(
-        //   'update:selected-time',
-        //   curLocationAxis.x - this.spectrogram.startTime
-        // );
+        this.$emit('update:selected-time', curLocationAxis.x - startTime);
         console.log(startTime);
         console.log(curLocationAxis.x - startTime);
       });

@@ -214,7 +214,7 @@
     <!-- Spectrogram -->
     <div class="plot-holder">
       <heatmap
-        :selected-time="selectedTime"
+        :selected-time.sync="selectedTime"
         :spectrogram="spectrogramData[fileSelected]"
         :min-decibel="currentConfig.minDecibel"
         :max-decibel="currentConfig.maxDecibel"
@@ -440,6 +440,9 @@ export default {
         this.loadSelectedAudioFile();
       }
     },
+    selectedTime(v) {
+      this.sound.currentTime = v / 1000 - 0.1;
+    },
     selectedDate(v) {
       // return if no spectrograms created
       if (this.spectrogramData.length === 0) return;
@@ -482,18 +485,22 @@ export default {
       this.spectrogramData.splice(index, 1);
       this.numLoaded--;
     },
+    /**
+     * load the audio file from an optional specified start time in seconds
+     */
     loadSelectedAudioFile() {
       // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL
-      const sound = document.getElementById('audio');
+      this.sound = document.getElementById('audio');
       if (this.fileSelected < 0) {
         this.audioSrc = null;
-        sound.load();
+        this.sound.load();
         return;
       }
       this.audioSrc = URL.createObjectURL(this.audioFiles[this.fileSelected]);
-      sound.load();
+      this.sound.load();
       this.currentTime = this.spectrogramData[this.fileSelected].startTime;
-      sound.addEventListener(
+      const sound = this.sound;
+      this.sound.addEventListener(
         'timeupdate',
         () => {
           if (this.fileSelected < 0) return;
@@ -688,6 +695,7 @@ export default {
           to the form data.
         */
       this.loading = true;
+      // TODO: if lower file number is loaded after higher, the spectrogramData doesn't reset
       if (this.currentConfig !== this.config) {
         // reprocess spectrograms
         this.currentConfig = this.config;
