@@ -30,10 +30,12 @@ import getTurboSteps from '@/components/turbo.js';
 export default {
   name: 'TrajectoryChart',
   props: {
+    // array of {x:time, y:depth, value:soundSpeed}
     points: {
       required: true,
       type: Array,
     },
+    // array of {x:time,y:temperature,z:salinity,value:soundSpeed}
     points2: {
       required: true,
       type: Array,
@@ -158,7 +160,9 @@ export default {
 
       // Disable default auto cursor.
       this.chart.setAutoCursorMode(AutoCursorModes.disabled);
+
       // Add line series to the chart for glider trajectory
+      if (this.lineSeries1) this.lineSeries1.dispose();
       this.lineSeries1 = this.chart
         .addLineSeries({ individualLookupValuesEnabled: true })
         .setName('Sound Speed')
@@ -198,12 +202,12 @@ export default {
         .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
           tickStrategy.setDateOrigin(this.startDate)
         ); // expects time in milliseconds
-      const tempAxis = this.chart2
+      this.tempAxis = this.chart2
         .getDefaultAxisY()
         .setTitle('Temperature (°C)')
         .setTitleFillStyle(new SolidFill({ color: ColorHEX('#ffff5b') }))
         .setAnimationScroll(undefined);
-      const salinityAxis = this.chart2
+      this.salinityAxis = this.chart2
         .addAxisY({
           opposite: true,
           color: 'orange', // TODO: make Salinity title match line color so you don't need a legend
@@ -232,7 +236,7 @@ export default {
       // Add line series to the chart for salinity
       this.lineSeries3 = this.chart2
         .addLineSeries({
-          yAxis: salinityAxis,
+          yAxis: this.salinityAxis,
           // Specify index for automatic color selection. By default this would be 1, but a larger number is supplied to increase contrast between series.
           automaticColorIndex: 2,
         })
@@ -247,6 +251,62 @@ export default {
 
       console.log('points added');
 
+      // add cursors
+      if (this.lineSeries1) this.addCustomCursor();
+
+      this.addTimeMarkers();
+
+      this.addSelectedTimeMarker();
+    },
+    setDrag() {
+      this.drag = true;
+    },
+    clickPlot(plot, line, event) {
+      if (this.drag) {
+        this.drag = false;
+      } else {
+        // Translate mouse location to Axis coordinate system.
+        const curLocationAxis = translatePoint(
+          plot.engine.clientLocation2Engine(event.clientX, event.clientY),
+          plot.engine.scale,
+          line.scale
+        );
+        this.selectedTime = curLocationAxis.x;
+        const selectedDate = this.plotTimeToDate(this.selectedTime);
+        if (this.timeSelectedLine) this.timeSelectedLine.dispose();
+        if (this.timeSelectedLine2) this.timeSelectedLine2.dispose();
+        this.timeSelectedLine = this.setSelectedTime(this.chart);
+        this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
+        this.$emit('date', selectedDate);
+      }
+    },
+    /**
+     * Add marker for clicked location
+     */
+    setSelectedTime(chart) {
+      if (this.selectedTime === null) {
+        return;
+      }
+
+      // TODO: y axis doesn't update until clicked
+      const yMin = chart.getDefaultAxisY().getInterval().start;
+      const yMax = chart.getDefaultAxisY().getInterval().end;
+      return chart
+        .addLineSeries()
+        .setStrokeStyle((style) =>
+          style
+            .setThickness(3)
+            .setFillStyle(new SolidFill({ color: ColorHEX('#F00') }))
+        )
+        .add([
+          { x: this.selectedTime, y: yMin },
+          { x: this.selectedTime, y: yMax },
+        ]);
+    },
+    /**
+     * Set up custom cursor synced between plots
+     */
+    addCustomCursor() {
       /// //////////// sync plots
 
       this.charts = [this.chart, this.chart2];
@@ -322,7 +382,9 @@ export default {
         .getDefaultAxisY()
         .addCustomTick()
         .setAllocatesAxisSpace(false);
-      ticksY[2] = salinityAxis.addCustomTick().setAllocatesAxisSpace(false);
+      ticksY[2] = this.salinityAxis
+        .addCustomTick()
+        .setAllocatesAxisSpace(false);
 
       const setCustomCursorVisible = (visible) => {
         if (!visible) {
@@ -439,74 +501,6 @@ export default {
           setCustomCursorVisible(false);
         });
       });
-
-      /// /////////////////
-
-      this.addTimeMarkers();
-
-      // Add line for time selection
-      this.timeSelectedLine = this.setSelectedTime(this.chart);
-      this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
-
-      this.chart.onSeriesBackgroundMouseUp((_, event) => {
-        this.clickPlot(this.chart, this.lineSeries1, event);
-      });
-
-      this.chart2.onSeriesBackgroundMouseUp((_, event) => {
-        this.clickPlot(this.chart2, this.lineSeries2, event);
-      });
-
-      this.chart.onSeriesBackgroundMouseDrag(() => {
-        this.setDrag();
-      });
-      this.chart2.onSeriesBackgroundMouseDrag(() => {
-        this.setDrag();
-      });
-    },
-    setDrag() {
-      this.drag = true;
-    },
-    clickPlot(plot, line, event) {
-      if (this.drag) {
-        this.drag = false;
-      } else {
-        // Translate mouse location to Axis coordinate system.
-        const curLocationAxis = translatePoint(
-          plot.engine.clientLocation2Engine(event.clientX, event.clientY),
-          plot.engine.scale,
-          line.scale
-        );
-        this.selectedTime = curLocationAxis.x;
-        const selectedDate = this.plotTimeToDate(this.selectedTime);
-        if (this.timeSelectedLine) this.timeSelectedLine.dispose();
-        if (this.timeSelectedLine2) this.timeSelectedLine2.dispose();
-        this.timeSelectedLine = this.setSelectedTime(this.chart);
-        this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
-        this.$emit('date', selectedDate);
-      }
-    },
-    /**
-     * Add marker for clicked location
-     */
-    setSelectedTime(chart) {
-      if (this.selectedTime === null) {
-        return;
-      }
-
-      // TODO: y axis doesn't update until clicked
-      const yMin = chart.getDefaultAxisY().getInterval().start;
-      const yMax = chart.getDefaultAxisY().getInterval().end;
-      return chart
-        .addLineSeries()
-        .setStrokeStyle((style) =>
-          style
-            .setThickness(3)
-            .setFillStyle(new SolidFill({ color: ColorHEX('#F00') }))
-        )
-        .add([
-          { x: this.selectedTime, y: yMin },
-          { x: this.selectedTime, y: yMax },
-        ]);
     },
     /**
      * Add markers for spectrogram start time
@@ -553,6 +547,31 @@ export default {
         //   .add(timeData);
       }
     },
+    /**
+     * Add line for clicked time selection
+     */
+    addSelectedTimeMarker() {
+      this.timeSelectedLine = this.setSelectedTime(this.chart);
+      this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
+
+      this.chart.onSeriesBackgroundMouseUp((_, event) => {
+        this.clickPlot(this.chart, this.lineSeries1, event);
+      });
+
+      this.chart2.onSeriesBackgroundMouseUp((_, event) => {
+        this.clickPlot(this.chart2, this.lineSeries2, event);
+      });
+
+      this.chart.onSeriesBackgroundMouseDrag(() => {
+        this.setDrag();
+      });
+      this.chart2.onSeriesBackgroundMouseDrag(() => {
+        this.setDrag();
+      });
+    },
+    /**
+     * Convert the time from the plot axis format to the date format used for emitting
+     */
     plotTimeToDate(plotTime) {
       return new Date(plotTime + this.startDate.getTime());
     },

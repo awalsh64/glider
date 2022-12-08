@@ -183,6 +183,7 @@
       </v-expansion-panel>
     </v-expansion-panels>
 
+    <!-- Geo Plot -->
     <div class="map-holder">
       <geo
         :points="latLonData"
@@ -300,6 +301,7 @@
  * lightningchart too many active webgl contexts when reloading
  * fix timestamp import time posixtodate
  * mdi doesn't load offline
+ * make trajectory line segments not connect, then you can remove individual segments for nc files instead of rereading all
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -439,12 +441,13 @@ export default {
       }
     },
     selectedDate(v) {
+      // return if no spectrograms created
+      if (this.spectrogramData.length === 0) return;
       // find spectrogramData.startTime that starts closest to selectedTime
       const hours = v.getHours();
       const minutes = v.getMinutes();
       const secs = v.getSeconds();
       this.selectedTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
-      console.log(this.selectedTime);
       const index = this.spectrogramData.findIndex((data) => {
         // find index of the spectrogram after selected time
         return this.selectedTime < data.startTime;
@@ -559,7 +562,6 @@ export default {
       this.loading = true;
       // reset data because data is a continuous stream of points
       this.gliderData = [];
-      this.gliderData = [];
       this.gliderDepth = [];
       this.tempSalData = [];
       this.latLonData = [];
@@ -595,7 +597,6 @@ export default {
           // get start time of all data
           if (this.gliderData.length < 1) {
             startTime = newData[0][this.ctdTimeIndex][0];
-            console.log(startTime);
           } else startTime = this.gliderData[0][this.ctdTimeIndex][0];
 
           // create glider depth profile

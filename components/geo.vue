@@ -8,6 +8,7 @@
 <script>
 // TODO: zoom to full view when click button https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-1111-covidDrillDownDashboard.html?theme=lightNew&page-theme=light
 // dispose data when new data loaded
+// change bathy to heatmap?
 import {
   lightningChart,
   PointShape,
