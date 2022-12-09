@@ -1,396 +1,472 @@
 <template>
-  <div class="container">
-    <p>
-      Add .wav files to the Audio Files list, select Process Files, then Select
-      a file to view the Spectrogram.
-    </p>
-    <p>Add NetCDF files at the bottom to view the parameters.</p>
-    <load-files
-      :add-files-to-store="addAudioFilesToStore"
-      :remove-files-from-store="removeAudioFilesFromStore"
-      :file-selected.sync="fileSelected"
-      file-type="Audio"
-      :hide-buttons="loading"
-    />
+  <div>
+    <v-expansion-panels>
+      <v-expansion-panel>
+        <v-expansion-panel-header
+          >Add NetCDF files and select Read NetCDF to import.
+        </v-expansion-panel-header>
+        <v-expansion-panel-content>
+          <p>
+            <!-- NetCDF files -->
+            <load-files
+              :allowed-extensions="/(\.nc|\.netCDF)$/i"
+              :files.sync="ncFiles"
+              :file-selected.sync="ncFileSelected"
+              file-type="NetCDF"
+              :hide-buttons="loading"
+              :show-select="numNCLoaded"
+            />
+            <!-- Load NetCDF-->
+            <v-btn v-if="!loading" color="primary" @click="readNetCDF()"
+              >Read NetCDF</v-btn
+            >
+            <span v-if="loading">Loading...</span>
+          </p>
+        </v-expansion-panel-content>
+      </v-expansion-panel>
+      <v-expansion-panel>
+        <v-expansion-panel-header>
+          Add audio files (.wav or .mp3) and select Process Files to import.
+          Select a file to view the Spectrogram.
+        </v-expansion-panel-header>
+        <v-expansion-panel-content>
+          <!-- Audio Files -->
+          <load-files
+            :allowed-extensions="/(\.mp3|\.wav)$/i"
+            :files.sync="audioFiles"
+            :file-selected.sync="fileSelected"
+            file-type="Audio"
+            :hide-buttons="loading"
+            :show-select="numLoaded"
+          />
+          <div>
+            <!-- Submit -->
+            <v-btn v-if="!loading" color="primary" @click="submitAudioFiles()"
+              >Process Files</v-btn
+            >
+            <v-dialog v-model="dialog" width="500">
+              <template #activator="{ on, attrs }">
+                <v-btn v-if="!loading" color="primary" v-bind="attrs" v-on="on">
+                  FFT Parameters
+                </v-btn>
+              </template>
+
+              <v-card>
+                <v-card-title class="text-h5"> FFT Parameters </v-card-title>
+                <v-card-text>
+                  <v-combobox
+                    v-model="nfftSelected"
+                    :items="nfftOptions"
+                    label="NFFT"
+                    outlined
+                    dense
+                  ></v-combobox>
+                  <v-text-field
+                    v-model="sampleRateInput"
+                    label="Sample Rate"
+                    clearable
+                    :rules="[rules.min0]"
+                  ></v-text-field>
+                  <v-text-field
+                    v-model="minDecibelInput"
+                    label="Minimum dB"
+                    clearable
+                    :rules="[rules.max0]"
+                  ></v-text-field>
+                  <v-text-field
+                    v-model="maxDecibelInput"
+                    label="Maximum dB"
+                    clearable
+                    :rules="[rules.max0]"
+                  ></v-text-field>
+                </v-card-text>
+                <v-divider></v-divider>
+                <v-card-actions>
+                  <v-spacer></v-spacer>
+                  <v-btn color="primary" text @click="dialog = false">
+                    Submit
+                  </v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
+            <!-- Loading -->
+            <span v-if="loading">Loading...</span>
+          </div>
+        </v-expansion-panel-content>
+      </v-expansion-panel>
+    </v-expansion-panels>
+
+    <!-- Trajectory Plot -->
+    <div class="nc-plot-holder">
+      <trajectory
+        :points="gliderDepth"
+        :points2="tempSalData"
+        :start-date="startDate"
+        :spectrograms="spectrogramData"
+        @date="selectedDate = $event"
+      />
+    </div>
+
+    <!-- Audio Player -->
     <div>
-      <!-- Submit -->
-      <v-btn v-if="!loading" @click="submitFiles()">Process Files</v-btn>
-      <!-- Audio Player -->
       <audio id="audio" controls>
         <source :src="audioSrc" type="audio/wav" />
         Your browser does not support the audio tag.
       </audio>
-      <!-- Loading -->
-      <span v-if="loading">Loading...</span>
     </div>
 
     <!-- Spectrogram -->
     <div class="plot-holder">
-      <heatmap :index="fileSelected" />
+      <heatmap
+        :selected-time="selectedTime"
+        :index="fileSelected"
+        :spectrogram="spectrogramData[fileSelected]"
+        :min-decibel="config.minDecibel"
+        :max-decibel="config.maxDecibel"
+        :current-time="currentTime"
+      />
     </div>
 
-    <!-- NetCDF files -->
-    <load-files
-      :add-files-to-store="addNCFilesToStore"
-      :remove-files-from-store="removeNCFilesFromStore"
-      :file-selected.sync="ncFileSelected"
-      file-type="NetCDF"
-      :hide-buttons="loading"
-    />
-    <!-- Load NetCDF-->
-    <v-btn v-if="!loading" @click="readNetCDF()">Read NetCDF</v-btn>
-    <div>
+    <!-- <div>
       <p>Select a Variable</p>
       <div class="variable-holder">
         <div v-for="(variable, key) in variables" :key="key">
-          <v-btn color="purple" @click="selectVariable(key)">{{
-            variable.name
-          }}</v-btn>
+          <v-btn color="purple" @click="selectVariable(key)"
+            >{{ key }}. {{ variable.name }}</v-btn
+          >
         </div>
       </div>
       <div class="variable-holder">
         <p>Selected Variable:</p>
         {{ selectedVariable }}
       </div>
-    </div>
+    </div> -->
   </div>
 </template>
 
 <script>
 /**
  * TODO:
- * get correct colormap
- * determine this.minDecibels,this.maxDecibels, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/maxDecibels
- * what happens when you remove last file
- * highlight selected file
+ * DONE-get correct colormap
+ * DONE-determine this.minDecibels,this.maxDecibels, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/maxDecibels
+ * DONE-drag and drop files
+ * DONE-add audio player to data viewer
+ * DONE-hide select button before processed
+ * DONE-duration should be different units than seconds so you don't have to figure out minutes
+ * DONE-button control on netcdf file loader
+ * DONE-reorder files by number/time
+ * DONE-Try with single component, v-if, no store
+ * DONE-test on mp3 file
+ * DONE-GMT time
+ * DONE-temperature and salinity profile
+ * DONE - time scrolling line with audio player
+ * import bathymetry
+ * get new improved colormap > jet
+ * depth vs. ctd_depth - change depthData variable index
+ * overlays - bathy, sea surface temp, chlorophyl (how to import, file type)
+ * show all spectrograms by scrolling down
  * upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
- * drag and drop files
- * time scrolling line with audio player
- * hide select button before processed
+ * fix npm run build for path stuff	https://elpan.dev/en/deploy-nuxt-js-on-github-pages
+ * Make spectrogram config parameters adjustable by user
+ * change getByteFrequencyData to getFloatFrequencyData if better precision needed, need to fix array remap
+ * ask Mel where the whales are
+ * Layout:
+ * |map|profiles|
+ * |spectrograms|
+ * change netCDF variables to object to avoid wrong indexing, handle missing variables
+ * handle missing netCDF variables
+ * make heatmap range (decibel range) user prop
+ * what happens when you remove last file
+ * Load audio start time from inputable look up table or read .cap file
+ * highlight selected file
+ * lat lon on a map
+ * add parameters to change spectrogram - nfft, overlap, window type
+ * rainbow line for sound speed on trajectory
+ * crashes if click nc chart while loading audio files because change fileSelected
+ * add watchers to FFT Parameters
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
 // Web Audio Documentation: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-decodeaudiodata
-import { mapMutations, mapGetters } from 'vuex';
-import { NetCDFReader } from 'netcdfjs';
+import Trajectory from '@/components/chartxy.vue';
 import Heatmap from '@/components/heatmap.vue';
 import LoadFiles from '@/components/loadFiles.vue';
+import {
+  getNetCDFVariables,
+  loadAudioData,
+  getStartTimeFromFilename,
+} from '@/components/import-functions.js';
 // File Upload Ex: https://serversideup.net/uploading-files-vuejs-axios/
 export default {
   components: {
+    Trajectory,
     Heatmap,
     LoadFiles,
   },
   data() {
     return {
+      dialog: false,
+      nfftOptions: [256, 512, 2048, 4096, 8192, 16384],
+      nfftSelected: 2048,
+      sampleRateInput: 128000,
+      minDecibelInput: -160,
+      maxDecibelInput: -60,
+      rules: {
+        min0: (value) => Number(value) > 0 || 'Value must be greater than 0.',
+        max0: (value) =>
+          Number(value) <= 0 || 'Value must be less than or equal to 0.',
+      },
+      currentTime: 0,
       audioCtx: null,
       audioSrc: null,
       fileSelected: -1,
       ncFileSelected: -1,
+      numNCLoaded: 0,
       selectedVariable: null,
       loading: false,
+      numLoaded: 0,
+      selectedDate: null,
+      selectedTime: 1,
+      ctdTimeIndex: 0,
+      ctdDepthIndex: 1,
+      depthIndex: 2,
+      latitudeIndex: 3,
+      longitudeIndex: 4,
+      temperatureIndex: 5,
+      salinityIndex: 6,
+      svpIndex: 7,
+      spectrogramData: [],
+      audioFiles: [],
+      ncFiles: [],
+      ncData: [],
+      readVar: { name: '', variable: null },
+      gliderData: [], // [{ time: [], latitude: [], longitude: [], depth: [] }], // length num files
+      gliderDepth: [],
+      tempSalData: [],
+      startDate: new Date(),
       config: {
         /**
-         * The resolution of the FFT calculations
+         * The resolution of the FFT calculations - NFFT
          * Higher value means higher resolution decibel domain.
+         * 4096 gives freq res of 31-32Hz
+         * 8192 gives 15-16Hz
          */
-        fftResolution: 4096,
+        fftResolution: 512,
         /**
          * Smoothing value for FFT calculations
          */
-        smoothingTimeConstant: 0.1,
+        smoothingTimeConstant: 0,
         /**
          * The size of processing buffer,
          * determines how often FFT is run
+         * 256 gives time resolution of 0.002s
+         * 2048 gives time res of 0.016s
          */
         processorBufferSize: 2048,
+        /**
+         * sampling rate for audio data in Hz
+         * this should match the recorded sample rate of the wav file
+         */
+        sampleRate: 128000,
+        minDecibels: -160,
+        maxDecibels: -60,
       },
       resolution: {
         x: 1000,
         y: 1000,
       },
-      minDecibels: 0,
-      maxDecibels: 0,
       variables: [],
     };
   },
-  computed: {
-    audioFiles() {
-      return this.$store.state.audioFiles;
-    },
-    ncFiles() {
-      return this.$store.state.ncFiles;
-    },
-  },
+  computed: {},
   watch: {
     fileSelected() {
       // add sound to audio player
       // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL
+      if (this.fileSelected < 0) return;
       this.audioSrc = URL.createObjectURL(this.audioFiles[this.fileSelected]);
       const sound = document.getElementById('audio');
       sound.load();
+      this.selectedTime = this.spectrogramData[this.fileSelected].startTime;
+      this.currentTime = this.spectrogramData[this.fileSelected].startTime;
+      sound.addEventListener(
+        'timeupdate',
+        () => {
+          this.currentTime =
+            sound.currentTime * 1000 +
+            this.spectrogramData[this.fileSelected].startTime;
+        },
+        false
+      );
+
+      // const audioCtx = new AudioContext();
+      // const source = audioCtx.createMediaElementSource(sound);
+
+      console.log('file selected');
+    },
+    selectedDate(v) {
+      // find spectrogramData.startTime that starts closest to selectedTime
+      const hours = v.getHours();
+      const minutes = v.getMinutes();
+      const secs = v.getSeconds();
+      this.selectedTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
+      const index = this.spectrogramData.findIndex((data) => {
+        // selected time < spectrogram start after current
+        return this.selectedTime < data.startTime;
+      });
+      // index-1 to get previous spectrogram
+      if (index < 0) this.fileSelected = this.spectrogramData.length - 1;
+      else this.fileSelected = index - 1;
+      this.selectedTime = this.spectrogramData[this.fileSelected].startTime;
+      this.currentTime = this.spectrogramData[this.fileSelected].startTime;
+      console.log('index', this.fileSelected);
     },
   },
   methods: {
     /**
-     * Read Net CDF files
+     * Read Net CDF files and add trajectory path variables to gliderData
      */
     async readNetCDF() {
-      for (let i = 0; i < this.ncFiles.length; i++) {
-        await this.getVariables(i).then((v) => {
-          this.addNCDataToStore(v);
+      this.loading = true;
+      const newData = [];
+      let depthData = [];
+      let tempSalData = [];
+      let startTime = 0;
+      // only read new files
+      for (let i = this.gliderData.length; i < this.ncFiles.length; i++) {
+        console.log('load file ', i);
+        const file = URL.createObjectURL(this.ncFiles[i]);
+        await getNetCDFVariables(file, [
+          'ctd_time',
+          'ctd_depth',
+          'depth',
+          'latitude',
+          'longitude',
+          'temperature',
+          'salinity_raw',
+          'sound_velocity',
+        ]).then((v) => {
+          // TODO: change variables to object to avoid wrong indexing
+          // Documentation: https://www.digitalocean.com/community/tutorials/understanding-date-and-time-in-javascript
+          v[0] = v[0].map((time) => {
+            return time * 1000; // convert seconds to milliseconds
+          });
+          newData.push(v);
+
+          // get start time of all data
+          if (this.gliderData.length < 1)
+            startTime = newData[0][this.ctdTimeIndex][0];
+          else startTime = this.gliderData[0][this.ctdTimeIndex][0];
+
+          // create glider depth profile
+          const time = v[this.ctdTimeIndex];
+          const oneDive = time.map((x, i) => {
+            const T = v[this.temperatureIndex][i]; // Celcius
+            const S = v[this.salinityIndex][i]; // ppt
+            const D = v[this.depthIndex][i] * 0.3048; // meters
+            const soundSpeed =
+              1448.96 +
+              4.591 * T -
+              5.304 * 10 ** -2 * T ** 2 +
+              2.374 * 10 ** -4 * T ** 3 +
+              1.34 * (S - 35) +
+              1.63 * 10 ** -2 * D +
+              1.675 * 10 ** -7 * D ** 2 -
+              1.025 * 10 ** -2 * T * (S - 35) -
+              7.139 * 10 ** -13 * T * D ** 3; // documentation: Mackenzie equation (1981) http://resource.npl.co.uk/acoustics/techguides/soundseawater/underlying-phys.html
+            // reference: K.V. Mackenzie, Nine-term equation for the sound speed in the oceans (1981) J. Acoust. Soc. Am. 70(3), pp 807-812
+            return {
+              x: x - startTime, // time milliseconds
+              y: v[this.depthIndex][i], // depth
+              value: soundSpeed, // sound speed
+            };
+          });
+          depthData = depthData.concat(oneDive);
+
+          const tempSalinityData = oneDive.map((dive, i) => {
+            return {
+              x: dive.x,
+              y: v[this.temperatureIndex][i],
+              z: v[this.salinityIndex][i],
+              value: dive.value,
+            };
+          });
+          tempSalData = tempSalData.concat(tempSalinityData);
         });
       }
-      this.variables = this.$store.getters.getNCData(
-        this.$store.getters.getNumNCFiles - 1
-      ).header.variables;
-      this.ncFileSelected = this.$store.getters.getNumNCFiles - 1;
+      console.log('all nc files read');
+      this.gliderData = this.gliderData.concat(newData);
+      this.gliderDepth = this.gliderDepth.concat(depthData);
+      this.tempSalData = this.tempSalData.concat(tempSalData);
+      // offset time by timezone to GMT
+      this.startDate = new Date(
+        startTime + new Date(startTime * 1000).getTimezoneOffset() * 60000
+      );
+      this.ncFileSelected = this.ncFiles.length - 1;
+      this.numNCLoaded = this.ncFiles.length;
+      this.loading = false;
     },
 
     /**
-     * Return all variables in NetCDF file
+     * Get variable information for specific term
      */
-    getVariables(index) {
-      const file = URL.createObjectURL(this.ncFiles[index]);
-      return new Promise(function (resolve) {
-        const request = new XMLHttpRequest();
-        request.open('GET', file, true);
-        // Documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
-        request.responseType = 'arraybuffer';
-        request.onload = () => {
-          // wait for file to load using promise
-          const data = request.response;
-          const reader = new NetCDFReader(data);
-          resolve(reader);
-        };
-        request.send();
-      });
-    },
-
-    selectVariable(index) {
-      const ncData = this.$store.getters.getNCData(this.ncFileSelected);
-      console.log(index);
-      console.log(ncData.header.variables[index].name);
-      const name = `${ncData.header.variables[index].name}`;
-      this.readVariable({
-        ind: this.ncFileSelected,
-        name,
-      });
-      this.selectedVariable = this.$store.state.readVar.variable;
+    async selectVariable(index) {
+      // get all variables for variable list for selected nc file
+      // when variable is selected, get variable from name async from this.getVariales
+      // need to get variable name from a different way than getting the whole list and using the index
+      // await getNetCDFVariables(this.ncFileSelected, []).then((v) => {
+      //     this.variables = v;
+      //     const name = `${this.variables[index].name}`;
+      // this.selectedVariable = await getNetCDFVariables(this.ncFileSelected, [
+      //   name,
+      // ])[0].data;
+      // console.log(this.selectedVariable);
+      //   });
     },
 
     /*
         Submits audioFiles to the server
       */
-    async submitFiles() {
+    async submitAudioFiles() {
       /*
           Iterate over any file sent over appending the audioFiles
           to the form data.
         */
       this.loading = true;
-      const numLoaded = this.$store.getters.getNumSpectrograms;
-
-      for (let i = numLoaded; i < this.audioFiles.length; i++) {
+      this.config = {
+        fftResolution: this.nfftSelected,
+        smoothingTimeConstant: 0,
+        processorBufferSize: 2048,
+        sampleRate: this.sampleRateInput,
+        minDecibels: this.minDecibelInput,
+        maxDecibels: this.maxDecibelInput,
+      };
+      console.log('audioFiles ', this.audioFiles);
+      const data = [];
+      for (
+        let i = this.spectrogramData.length;
+        i < this.audioFiles.length;
+        i++
+      ) {
         // Documentation: https://zellwk.com/blog/async-await-in-loops/
         // wait for async function
-        await this.loadAudioData(i).then((v) => {
-          this.addSpectrogramData(v);
+        const file = this.audioFiles[i];
+        console.log('load ', i);
+        await loadAudioData(file, this.config).then((v) => {
+          // TODO: make option to load time from inputable look up table or read .cap file
+          const csvTimestamps = [
+            1569338218, 1569338615, 1569341097, 1569341877, 1569343447,
+            1569344206,
+          ];
+          v.startTime = getStartTimeFromFilename(file.name);
+          data.push(v);
         });
       }
       this.fileSelected = this.audioFiles.length - 1;
+      this.spectrogramData = this.spectrogramData.concat(data);
+      this.numLoaded = this.audioFiles.length;
       this.loading = false;
     },
-
-    loadAudioData(index) {
-      console.log('load ', index);
-      const audioCtx = new AudioContext();
-      const processWaveform = this.processWaveform;
-
-      // create URL to reference imported audio file
-      const myAudio = URL.createObjectURL(this.audioFiles[index]);
-
-      // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/decodeAudioData#examples
-      // decode audio data loaded from an XMLHttpRequest
-      console.log('XML HTTP');
-      return new Promise(function (resolve) {
-        const request = new XMLHttpRequest();
-        request.open('GET', myAudio, true);
-        // Documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
-        request.responseType = 'arraybuffer';
-        console.log(request);
-        request.onload = () => {
-          console.log('loaded');
-          // wait for file to load using promise
-          const audioData = request.response;
-          audioCtx.decodeAudioData(audioData).then((decodedData) => {
-            // use the decoded data here
-            console.log('decoded');
-            resolve(processWaveform(decodedData));
-            console.log('processed');
-          });
-        };
-        request.send();
-      });
-    },
-    /**
-     * Process a AudioBuffer and create FFT Data for Spectrogram from it.
-     * @param   {AudioBuffer}     audioBuffer   AudioBuffer to process into FFT data.
-     * @returns {WaveFormData}                  Processed data
-     */
-    async processWaveform(audioBuffer) {
-      // Create a new OfflineAudioContext with information from the pre-created audioBuffer
-      // The OfflineAudioContext can be used to process a audio file as fast as possible.
-      // Normal AudioContext would process the file at the speed of playback.
-      // const audioSampleRate = 128000; // 128kHz
-      const offlineCtx = new OfflineAudioContext(
-        audioBuffer.numberOfChannels,
-        audioBuffer.length,
-        audioBuffer.sampleRate
-      );
-      // Create a new source, in this case we have a AudioBuffer to create it for, so we create a buffer source
-      const source = offlineCtx.createBufferSource();
-      // Set the buffer to the audio buffer we are using
-      source.buffer = audioBuffer;
-
-      // Create a analyzer node for the full context
-      const generalAnalyzer = offlineCtx.createAnalyser();
-      generalAnalyzer.fftSize = this.config.fftResolution;
-      generalAnalyzer.smoothingTimeConstant = this.config.smoothingTimeConstant;
-
-      // Prepare buffer and analyzer
-      const channelFFtDataBuffer = new Uint8Array(
-        (audioBuffer.length / this.config.processorBufferSize) *
-          (this.config.fftResolution / 2)
-      );
-      // Setup analyzer for this channel
-      const analyzer = offlineCtx.createAnalyser();
-      analyzer.smoothingTimeConstant = this.config.smoothingTimeConstant;
-      analyzer.fftSize = this.config.fftResolution;
-      analyzer.maxDecibels = this.$store.state.maxDecibels;
-      analyzer.minDecibels = this.$store.state.minDecibels;
-      // TODO: figure out what decibel range to use
-      // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/minDecibels
-      // Connect the created analyzer to the source
-      source.connect(analyzer);
-      const channelDbRanges = {
-        minDecibels: analyzer.minDecibels,
-        maxDecibels: analyzer.maxDecibels,
-      };
-
-      // Script processor is used to process all of the audio data in fftSize sized blocks
-      // Script processor is a deprecated API but the replacement APIs have really poor browser support
-      offlineCtx.createScriptProcessor =
-        offlineCtx.createScriptProcessor || offlineCtx.createJavaScriptNode;
-      const processor = offlineCtx.createScriptProcessor(
-        this.config.processorBufferSize,
-        1,
-        1
-      );
-      let offset = 0;
-      // Documentation https://developer.mozilla.org/en-US/docs/Web/API/ScriptProcessorNode/audioprocess_event
-      processor.onaudioprocess = () => {
-        // Run FFT for each channel
-        /// //////slow
-        const freqData = new Uint8Array(
-          channelFFtDataBuffer.buffer,
-          offset,
-          analyzer.frequencyBinCount
-        );
-        analyzer.getByteFrequencyData(freqData);
-        offset += generalAnalyzer.frequencyBinCount;
-      };
-      // Connect source buffer to correct nodes,
-      // source feeds to:
-      // processor, to do the actual processing
-      // generalAnalyzer, to get collective information
-      source.connect(processor);
-      processor.connect(offlineCtx.destination);
-      source.connect(generalAnalyzer);
-      // Start the source, other wise start rendering would not process the source
-      source.start(0);
-
-      // Process the audio buffer when loaded
-      await offlineCtx.startRendering();
-      const processed = {
-        channel: channelFFtDataBuffer,
-        channelDbRanges,
-        stride: this.config.fftResolution / 2,
-        tickCount: Math.ceil(
-          audioBuffer.length / this.config.processorBufferSize
-        ),
-        maxFreq: offlineCtx.sampleRate / 2, // max freq is always half the sample rate
-        duration: audioBuffer.duration,
-      };
-
-      return this.formatSpectrogram(processed);
-    },
-    /**
-     * Create data matrix for heatmap from one dimensional array
-     * @param {Uint8Array}  data        FFT Data
-     * @param {number}      strideSize  Single data block width
-     * @param {number}      tickCount    Data row count
-     */
-    remapDataToTwoDimensionalMatrix(data, strideSize, tickCount) {
-      /**
-       * @type {Array<number>}
-       */
-      // Map the one dimensional data to two dimensional data where data goes from right to left
-      // [1, 2, 3, 4, 5, 6]
-      // -> strideSize = 2
-      // -> rowCount = 3
-      // maps to
-      // [1, 4]
-      // [2, 5]
-      // [3, 6]
-      // const output = Array.from(Array(strideSize)).map(() =>
-      // Array.from(Array(tickCount))
-      // );
-      console.log('remap data');
-      const output = [];
-      // console.log(output);
-      for (let row = 0; row < strideSize; row += 1) {
-        output[row] = [];
-        for (let col = 0; col < tickCount; col += 1) {
-          output[row][col] = data[col * strideSize + row];
-        }
-      }
-      console.log('done remapped');
-      return output;
-    },
-    /**
-     * Setup data for the chart
-     * */
-    formatSpectrogram(data) {
-      // Set data for each channel
-      // Setup the data for the chart
-      const remappedData = this.remapDataToTwoDimensionalMatrix(
-        data.channel,
-        data.stride,
-        data.tickCount
-      )
-        // Slice only first half of data (rest are 0s).
-        .slice(0, data.stride / 2);
-      // this.spectrogramData = remappedData;
-      // //TODO: duration should be different units than seconds so you don't have to round
-      // this.duration = Math.floor(data.duration);
-      // this.maxFreq = Math.ceil(data.maxFreq / 2); //Use half of the fft data range
-      this.minDecibels = data.channelDbRanges.minDecibels;
-      this.maxDecibels = data.channelDbRanges.maxDecibels;
-      return {
-        duration: Math.floor(data.duration),
-        maxFreq: Math.ceil(data.maxFreq / 2),
-        spectrogramData: remappedData,
-      };
-    },
-    ...mapMutations([
-      'addSpectrogramData',
-      'addAudioFilesToStore',
-      'removeAudioFilesFromStore',
-      'addNCFilesToStore',
-      'removeNCFilesFromStore',
-      'addNCDataToStore',
-      'readVariable',
-    ]),
   },
 };
 </script>
@@ -414,7 +490,11 @@ span.select-file {
 }
 
 .plot-holder {
-  height: 50vh;
+  height: 80vh;
+}
+
+.nc-plot-holder {
+  height: 80vh;
 }
 
 .variable-holder {
@@ -422,5 +502,9 @@ span.select-file {
   width: 42vw;
   overflow-y: scroll;
   float: left;
+}
+
+#audio {
+  width: 98vw;
 }
 </style>

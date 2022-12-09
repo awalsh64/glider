@@ -1,12 +1,13 @@
 export const state = () => ({
   counter: 0,
   spectrogramData: [],
-  minDecibels: -100,
-  maxDecibels: -40,
+  minDecibels: -160,
+  maxDecibels: -60,
   audioFiles: [],
   ncFiles: [],
   ncData: [],
   readVar: { name: '', variable: null },
+  gliderData: [], // [{ time: [], latitude: [], longitude: [], depth: [] }], // length num files
 });
 
 export const getters = {
@@ -18,6 +19,9 @@ export const getters = {
   },
   getNumSpectrograms(state) {
     return state.spectrogramData.length;
+  },
+  getNumAudioFiles(state) {
+    return state.audioFiles.length;
   },
   getNumNCFiles(state) {
     return state.ncFiles.length;
@@ -34,16 +38,15 @@ export const mutations = {
   addSpectrogramData(state, data) {
     state.spectrogramData.push(data);
   },
-  addAudioFilesToStore(state, file) {
-    state.audioFiles.push(file);
-    console.log(state.audioFiles);
+  addAudioFilesToStore(state, files) {
+    state.audioFiles.push(files);
   },
   removeAudioFilesFromStore(state, ind) {
     state.audioFiles.splice(ind, 1);
     state.spectrogramData.splice(ind, 1);
   },
-  addNCFilesToStore(state, file) {
-    state.ncFiles.push(file);
+  addNCFilesToStore(state, files) {
+    state.ncFiles.push(files);
   },
   removeNCFilesFromStore(state, ind) {
     state.ncFiles.splice(ind, 1);
@@ -57,6 +60,9 @@ export const mutations = {
       props.name
     );
     state.readVar.name = props.name;
+  },
+  addGliderData(state, data) {
+    state.gliderData.push(data);
   },
 };
 

@@ -4,7 +4,16 @@
     <label
       >{{ fileType }} Files:
       <!-- Add Files -->
-      <v-btn v-if="!hideButtons" @click="addFiles()">Add Files</v-btn>
+      <v-btn
+        v-if="!hideButtons"
+        id="drop_zone"
+        @drop="dropHandler"
+        @dragover.prevent
+        @click="openFileExplorer()"
+      >
+        <v-icon color="primary">mdi-folder-upload-outline</v-icon> Drag one or
+        more files here to import or click to open file explorer.
+      </v-btn>
       <input
         id="files"
         ref="files"
@@ -14,9 +23,13 @@
       />
     </label>
     <div>
-      <div v-for="(file, key) in files" :key="key">
+      <div v-for="(file, key) in innerFiles" :key="key">
         {{ file.name }}
-        <v-btn v-if="!hideButtons" class="select-file" @click="select(key)"
+        <v-btn
+          v-if="!hideButtons && showSelect > key"
+          class="select-file"
+          :color="fileSelected === key ? 'primary' : ''"
+          @click="select(key)"
           >Select</v-btn
         >
         <v-btn v-if="!hideButtons" class="remove-file" @click="removeFile(key)"
@@ -30,12 +43,12 @@
 <script>
 export default {
   props: {
-    addFilesToStore: {
-      type: Function,
+    allowedExtensions: {
+      type: RegExp,
       required: true,
     },
-    removeFilesFromStore: {
-      type: Function,
+    files: {
+      type: Array,
       required: true,
     },
     fileSelected: {
@@ -50,10 +63,14 @@ export default {
       type: Boolean,
       default: false,
     },
+    showSelect: {
+      type: Number,
+      default: 0,
+    },
   },
   data() {
     return {
-      files: [],
+      innerFiles: [],
     };
   },
 
@@ -61,15 +78,31 @@ export default {
     /**
      * Open file explorer to add files
      */
-    addFiles() {
+    openFileExplorer() {
       this.$refs.files.click();
+    },
+    /**
+     * Add files to app
+     */
+    addFiles(files) {
+      for (let i = 0; i < files.length; i++) {
+        this.innerFiles.push(files[i]);
+      }
+      this.innerFiles.sort((a, b) => {
+        if (a.name < b.name) {
+          return -1;
+        } else if (a.name > b.name) {
+          return 1;
+        } else return 0;
+      });
+      this.$emit('update:files', this.innerFiles);
     },
     /**
      * Removes a select file the user has uploaded
      */
     removeFile(key) {
-      this.removeFilesFromStore(key);
-      this.files.splice(key, 1);
+      this.innerFiles.splice(key, 1);
+      this.$emit('update:files', this.innerFiles);
       if (this.fileSelected === key) {
         this.select(this.fileSelected);
         // TODO: This won't trigger a replot when fileSelected===0 because fileSelected isn't changing
@@ -86,12 +119,54 @@ export default {
      */
     handleFilesUpload() {
       const uploadedFiles = this.$refs.files.files;
-
       // Adds the uploaded file to the files array
-      for (let i = 0; i < uploadedFiles.length; i++) {
-        this.addFilesToStore(uploadedFiles[i]);
-        this.files.push(uploadedFiles[i]);
+      this.addFiles(uploadedFiles);
+    },
+    /**
+     * Check allowed file types
+     */
+    checkFileType(newFile) {
+      if (!this.allowedExtensions.exec(newFile.name)) {
+        alert('Invalid file type');
+        return false;
+      } else {
+        return true;
       }
+    },
+    /**
+     * Drop files into uploader
+     * check file type
+     * add to app
+     */
+    dropHandler(ev) {
+      // Prevent default behavior (Prevent file from being opened)
+      ev.preventDefault();
+      const files = [];
+      if (ev.dataTransfer.items) {
+        // Use DataTransferItemList interface to access the file(s)
+        [...ev.dataTransfer.items].forEach((item) => {
+          // If dropped items aren't files, reject them
+          if (item.kind === 'file') {
+            const newFile = item.getAsFile();
+
+            if (this.checkFileType(newFile)) {
+              files.push(newFile);
+            }
+          }
+        });
+      } else {
+        // Use DataTransfer interface to access the file(s)
+        [...ev.dataTransfer.files].forEach((file) => {
+          if (this.checkFileType(file)) {
+            files.push(file);
+          }
+        });
+      }
+      this.addFiles(files);
+    },
+    dragOverHandler(ev) {
+      // Prevent default behavior (Prevent file from being opened)
+      ev.preventDefault();
     },
   },
 };
@@ -102,5 +177,10 @@ export default {
   height: 30vh;
   max-height: 30vh;
   overflow-y: scroll;
+}
+#drop_zone {
+  border: 5px solid #00dc82;
+  width: 95%;
+  height: 60px;
 }
 </style>
