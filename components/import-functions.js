@@ -45,17 +45,17 @@ export function posixToDate(name) {
 }
 
 export function getStartTimeFromFilename(name) {
-  let year = name.substr(15, 2);
+  let year = name.substr(name.length - 17, 2);
   year = '20'.concat(year);
   // months are from 0-11
-  const month = parseInt(name.substr(17, 2)) - 1;
+  const month = parseInt(name.substr(name.length - 15, 2)) - 1;
   // TODO: Double check that 9 = September?
-  const day = name.substr(19, 2);
+  const day = name.substr(name.length - 13, 2);
   // TODO: convert time to GMT (4 can't be hard coded)
-  const hours = parseInt(name.substr(22, 2));
-  const minutes = name.substr(24, 2);
-  const secs = name.substr(26, 2);
-  console.log({ hours, minutes, secs });
+  const hours = parseInt(name.substr(name.length - 10, 2));
+  const minutes = name.substr(name.length - 8, 2);
+  const secs = name.substr(name.length - 6, 2);
+  console.log({ year, month, day, hours, minutes, secs });
   // const date = new Date(year, month, day, hours, minutes, secs);
   const startTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
   if (isNaN(startTime)) return 0;
