@@ -3,7 +3,10 @@ export const state = () => ({
   spectrogramData: [],
   minDecibels: -100,
   maxDecibels: -40,
-  files: [],
+  audioFiles: [],
+  ncFiles: [],
+  ncData: [],
+  readVar: { name: '', variable: null },
 });
 
 export const getters = {
@@ -16,6 +19,12 @@ export const getters = {
   getNumSpectrograms(state) {
     return state.spectrogramData.length;
   },
+  getNumNCFiles(state) {
+    return state.ncFiles.length;
+  },
+  getNCData: (state) => (ind) => {
+    return state.ncData[ind];
+  },
 };
 
 export const mutations = {
@@ -25,12 +34,29 @@ export const mutations = {
   addSpectrogramData(state, data) {
     state.spectrogramData.push(data);
   },
-  addFilesToStore(state, file) {
-    state.files.push(file);
+  addAudioFilesToStore(state, file) {
+    state.audioFiles.push(file);
+    console.log(state.audioFiles);
   },
-  removeFilesFromStore(state, ind) {
-    state.files.splice(ind, 1);
+  removeAudioFilesFromStore(state, ind) {
+    state.audioFiles.splice(ind, 1);
     state.spectrogramData.splice(ind, 1);
+  },
+  addNCFilesToStore(state, file) {
+    state.ncFiles.push(file);
+  },
+  removeNCFilesFromStore(state, ind) {
+    state.ncFiles.splice(ind, 1);
+    state.ncData.splice(ind, 1);
+  },
+  addNCDataToStore(state, data) {
+    state.ncData.push(data);
+  },
+  readVariable(state, props) {
+    state.readVar.variable = state.ncData[props.ind].getDataVariable(
+      props.name
+    );
+    state.readVar.name = props.name;
   },
 };
 

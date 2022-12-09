@@ -1,34 +1,20 @@
 <template>
   <div class="container">
-    <!-- File List -->
-    <div class="file-holder">
-      <label
-        >Files:
-        <input
-          id="files"
-          ref="files"
-          type="file"
-          multiple
-          @change="handleFilesUpload()"
-        />
-      </label>
-      <div>
-        <div v-for="(file, key) in files" :key="key">
-          {{ file.name }}
-          <v-btn v-if="!loading" class="select-file" @click="select(key)"
-            >Select</v-btn
-          >
-          <v-btn v-if="!loading" class="remove-file" @click="removeFile(key)"
-            >Remove</v-btn
-          >
-        </div>
-      </div>
-    </div>
+    <p>
+      Add .wav files to the Audio Files list, select Process Files, then Select
+      a file to view the Spectrogram.
+    </p>
+    <p>Add NetCDF files at the bottom to view the parameters.</p>
+    <load-files
+      :add-files-to-store="addAudioFilesToStore"
+      :remove-files-from-store="removeAudioFilesFromStore"
+      :file-selected.sync="fileSelected"
+      file-type="Audio"
+      :hide-buttons="loading"
+    />
     <div>
-      <!-- Add Files -->
-      <v-btn v-if="!loading" @click="addFiles()">Add Files</v-btn>
       <!-- Submit -->
-      <v-btn v-if="!loading" @click="submitFiles()">Submit</v-btn>
+      <v-btn v-if="!loading" @click="submitFiles()">Process Files</v-btn>
       <!-- Audio Player -->
       <audio id="audio" controls>
         <source :src="audioSrc" type="audio/wav" />
@@ -41,6 +27,31 @@
     <!-- Spectrogram -->
     <div class="plot-holder">
       <heatmap :index="fileSelected" />
+    </div>
+
+    <!-- NetCDF files -->
+    <load-files
+      :add-files-to-store="addNCFilesToStore"
+      :remove-files-from-store="removeNCFilesFromStore"
+      :file-selected.sync="ncFileSelected"
+      file-type="NetCDF"
+      :hide-buttons="loading"
+    />
+    <!-- Load NetCDF-->
+    <v-btn v-if="!loading" @click="readNetCDF()">Read NetCDF</v-btn>
+    <div>
+      <p>Select a Variable</p>
+      <div class="variable-holder">
+        <div v-for="(variable, key) in variables" :key="key">
+          <v-btn color="purple" @click="selectVariable(key)">{{
+            variable.name
+          }}</v-btn>
+        </div>
+      </div>
+      <div class="variable-holder">
+        <p>Selected Variable:</p>
+        {{ selectedVariable }}
+      </div>
     </div>
   </div>
 </template>
@@ -55,22 +66,28 @@
  * upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
  * drag and drop files
  * time scrolling line with audio player
+ * hide select button before processed
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
 // Web Audio Documentation: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-decodeaudiodata
 import { mapMutations, mapGetters } from 'vuex';
+import { NetCDFReader } from 'netcdfjs';
 import Heatmap from '@/components/heatmap.vue';
+import LoadFiles from '@/components/loadFiles.vue';
 // File Upload Ex: https://serversideup.net/uploading-files-vuejs-axios/
 export default {
   components: {
     Heatmap,
+    LoadFiles,
   },
   data() {
     return {
       audioCtx: null,
       audioSrc: null,
       fileSelected: -1,
+      ncFileSelected: -1,
+      selectedVariable: null,
       loading: false,
       config: {
         /**
@@ -94,47 +111,93 @@ export default {
       },
       minDecibels: 0,
       maxDecibels: 0,
-      loadedFileInfo: [{ spectrogramData: [], duration: 0, maxFreq: 0 }],
+      variables: [],
     };
   },
   computed: {
-    files() {
-      return this.$store.state.files;
+    audioFiles() {
+      return this.$store.state.audioFiles;
+    },
+    ncFiles() {
+      return this.$store.state.ncFiles;
     },
   },
-  /*
-      Defines the method used by the component
-    */
+  watch: {
+    fileSelected() {
+      // add sound to audio player
+      // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL
+      this.audioSrc = URL.createObjectURL(this.audioFiles[this.fileSelected]);
+      const sound = document.getElementById('audio');
+      sound.load();
+    },
+  },
   methods: {
-    /*
-        Adds a file
-      */
-    addFiles() {
-      console.log('add');
-      this.$refs.files.click();
+    /**
+     * Read Net CDF files
+     */
+    async readNetCDF() {
+      for (let i = 0; i < this.ncFiles.length; i++) {
+        await this.getVariables(i).then((v) => {
+          this.addNCDataToStore(v);
+        });
+      }
+      this.variables = this.$store.getters.getNCData(
+        this.$store.getters.getNumNCFiles - 1
+      ).header.variables;
+      this.ncFileSelected = this.$store.getters.getNumNCFiles - 1;
+    },
+
+    /**
+     * Return all variables in NetCDF file
+     */
+    getVariables(index) {
+      const file = URL.createObjectURL(this.ncFiles[index]);
+      return new Promise(function (resolve) {
+        const request = new XMLHttpRequest();
+        request.open('GET', file, true);
+        // Documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
+        request.responseType = 'arraybuffer';
+        request.onload = () => {
+          // wait for file to load using promise
+          const data = request.response;
+          const reader = new NetCDFReader(data);
+          resolve(reader);
+        };
+        request.send();
+      });
+    },
+
+    selectVariable(index) {
+      const ncData = this.$store.getters.getNCData(this.ncFileSelected);
+      console.log(index);
+      console.log(ncData.header.variables[index].name);
+      const name = `${ncData.header.variables[index].name}`;
+      this.readVariable({
+        ind: this.ncFileSelected,
+        name,
+      });
+      this.selectedVariable = this.$store.state.readVar.variable;
     },
 
     /*
-        Submits files to the server
+        Submits audioFiles to the server
       */
     async submitFiles() {
-      this.loading = true;
-
       /*
-          Iterate over any file sent over appending the files
+          Iterate over any file sent over appending the audioFiles
           to the form data.
         */
       this.loading = true;
       const numLoaded = this.$store.getters.getNumSpectrograms;
 
-      for (let i = numLoaded; i < this.files.length; i++) {
+      for (let i = numLoaded; i < this.audioFiles.length; i++) {
         // Documentation: https://zellwk.com/blog/async-await-in-loops/
         // wait for async function
         await this.loadAudioData(i).then((v) => {
           this.addSpectrogramData(v);
         });
       }
-      this.select(this.files.length - 1);
+      this.fileSelected = this.audioFiles.length - 1;
       this.loading = false;
     },
 
@@ -144,7 +207,7 @@ export default {
       const processWaveform = this.processWaveform;
 
       // create URL to reference imported audio file
-      const myAudio = URL.createObjectURL(this.files[index]);
+      const myAudio = URL.createObjectURL(this.audioFiles[index]);
 
       // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/decodeAudioData#examples
       // decode audio data loaded from an XMLHttpRequest
@@ -319,58 +382,15 @@ export default {
         spectrogramData: remappedData,
       };
     },
-    /*
-        Handles the uploading of files
-      */
-    handleFilesUpload() {
-      const uploadedFiles = this.$refs.files.files;
-
-      /*
-          Adds the uploaded file to the files array
-        */
-      for (let i = 0; i < uploadedFiles.length; i++) {
-        this.addFilesToStore(uploadedFiles[i]);
-        this.loadedFileInfo.push({
-          maxFreq: 0,
-          duration: 0,
-          spectrogramData: [],
-        });
-      }
-    },
-
-    /*
-        Removes a select file the user has uploaded
-      */
-    removeFile(key) {
-      this.removeFilesFromStore(key);
-      if (this.fileSelected === key) {
-        if (this.fileSelected !== 0) {
-          this.select(this.fileSelected - 1);
-        } else {
-          this.select(0); // TODO: This won't trigger a replot because fileSelected isn't changing
-        }
-      }
-    },
-    /*
-    Select file to display audio
-    */
-    select(key) {
-      console.log('select');
-      this.fileSelected = key;
-      // add sound to audio player
-      // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL
-      this.audioSrc = URL.createObjectURL(this.files[this.fileSelected]);
-      const sound = document.getElementById('audio');
-      sound.load();
-    },
-    ...mapMutations({
-      addSpectrogramData: 'addSpectrogramData',
-      addFilesToStore: 'addFilesToStore',
-      removeFilesFromStore: 'removeFilesFromStore',
-    }),
-    ...mapGetters({
-      getNumSpectrograms: 'getNumSpectrograms',
-    }),
+    ...mapMutations([
+      'addSpectrogramData',
+      'addAudioFilesToStore',
+      'removeAudioFilesFromStore',
+      'addNCFilesToStore',
+      'removeNCFilesFromStore',
+      'addNCDataToStore',
+      'readVariable',
+    ]),
   },
 };
 </script>
@@ -393,13 +413,14 @@ span.select-file {
   float: right;
 }
 
-.file-holder {
-  height: 30vh;
-  max-height: 30vh;
-  overflow-y: scroll;
-}
-
 .plot-holder {
   height: 50vh;
+}
+
+.variable-holder {
+  height: 40vh;
+  width: 42vw;
+  overflow-y: scroll;
+  float: left;
 }
 </style>
