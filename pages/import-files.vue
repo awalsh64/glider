@@ -120,9 +120,16 @@
                     outlined
                     dense
                   ></v-combobox>
+                  <v-combobox
+                    v-model="processorBufferSizeInput"
+                    :items="nfftOptions"
+                    label="Processor Buffer Size"
+                    outlined
+                    dense
+                  ></v-combobox>
                   <v-text-field
                     v-model="sampleRateInput"
-                    label="Sample Rate"
+                    label="Sample Rate (Hz)"
                     clearable
                     :rules="[rules.samplerate]"
                   ></v-text-field>
@@ -338,12 +345,14 @@ export default {
       dialog3: false,
       nfftOptions: [256, 512, 1024, 2048, 4096, 8192, 16384],
       nfftSelected: 256, // TODO:2048
+      processorBufferSizeInput: 2048,
       sampleRateInput: 32000, // TODO:128000,
       minDecibelInput: -160,
       maxDecibelInput: -60,
       rules: {
         samplerate: (value) =>
-          Number(value) > 0 || 'Value must be great than 0.',
+          (Number(value) >= 3000 && Number(value) <= 768000) ||
+          'Value must be between 3000 and 768000.',
         mindb: (value) =>
           Number(value) <= 0 || 'Value must be less than or equal to 0.',
         maxdb: (value) =>
@@ -390,7 +399,7 @@ export default {
       currentConfig: {
         fftResolution: this.nfftSelected,
         smoothingTimeConstant: 0,
-        processorBufferSize: 2048,
+        processorBufferSize: this.processorBufferSizeInput,
         sampleRate: this.sampleRateInput,
         minDecibels: this.minDecibelInput,
         maxDecibels: this.maxDecibelInput,
@@ -421,7 +430,7 @@ export default {
          * 256 gives time resolution of 0.002s
          * 2048 gives time res of 0.016s
          */
-        processorBufferSize: 2048,
+        processorBufferSize: this.processorBufferSizeInput,
         /**
          * sampling rate for audio data in Hz
          * this should match the recorded sample rate of the wav file
