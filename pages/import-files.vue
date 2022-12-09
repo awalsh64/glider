@@ -124,19 +124,19 @@
                     v-model="sampleRateInput"
                     label="Sample Rate"
                     clearable
-                    :rules="[rules.min0]"
+                    :rules="[rules.samplerate]"
                   ></v-text-field>
                   <v-text-field
                     v-model="minDecibelInput"
                     label="Minimum dB"
                     clearable
-                    :rules="[rules.max0]"
+                    :rules="[rules.mindb]"
                   ></v-text-field>
                   <v-text-field
                     v-model="maxDecibelInput"
                     label="Maximum dB"
                     clearable
-                    :rules="[rules.max0]"
+                    :rules="[rules.maxdb]"
                   ></v-text-field>
                 </v-card-text>
                 <v-divider></v-divider>
@@ -216,8 +216,8 @@
       <heatmap
         :selected-time.sync="selectedTime"
         :spectrogram="spectrogramData[fileSelected]"
-        :min-decibel="currentConfig.minDecibel"
-        :max-decibel="currentConfig.maxDecibel"
+        :min-decibel="Number(minDecibelInput)"
+        :max-decibel="Number(maxDecibelInput)"
         :current-time="currentTime"
       />
     </div>
@@ -342,9 +342,13 @@ export default {
       minDecibelInput: -160,
       maxDecibelInput: -60,
       rules: {
-        min0: (value) => Number(value) > 0 || 'Value must be greater than 0.',
-        max0: (value) =>
+        samplerate: (value) =>
+          Number(value) > 0 || 'Value must be great than 0.',
+        mindb: (value) =>
           Number(value) <= 0 || 'Value must be less than or equal to 0.',
+        maxdb: (value) =>
+          (Number(value) <= 0 && Number(value) > -100) ||
+          'Value must be less than or equal to 0 and greater than -100.',
       },
       currentTime: 0,
       audioCtx: null,

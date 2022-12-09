@@ -102,12 +102,16 @@ export default {
       this.currentTimeLine.setValue(this.currentTime);
     },
     selectedTime() {
-      // this.setSelectedTime();
       this.selectedTimeLine.setValue(this.selectedTime);
     },
     currentTime() {
-      // this.setCurrentTime();
       this.currentTimeLine.setValue(this.currentTime);
+    },
+    minDecibel() {
+      this.createLegend();
+    },
+    maxDecibel() {
+      this.createLegend();
     },
   },
   beforeMount() {
