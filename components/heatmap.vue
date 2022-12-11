@@ -138,7 +138,6 @@ export default {
     intensityDataToDb(intensity) {
       const dataMinDecibel = this.minDecibel;
       const dataMaxDecibel = this.maxDecibel;
-      const gliderMaxSPL = 164.08; // dB re 1 μPa
       const minDecibels = dataMinDecibel; // + gliderMaxSPL;
       const maxDecibels = dataMaxDecibel; // + gliderMaxSPL;
       return minDecibels + (intensity / 255) * (maxDecibels - minDecibels);

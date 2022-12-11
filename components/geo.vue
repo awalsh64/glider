@@ -21,7 +21,9 @@ import {
   UIOrigins,
   ColorRGBA,
   SolidFill,
+  emptyLine,
 } from '@arction/lcjs';
+import { remapDataToTwoDimensionalMatrix } from '@/components/import-functions.js';
 import getTurboSteps from '@/components/turbo.js';
 
 export default {
@@ -32,14 +34,14 @@ export default {
       required: true,
     },
     bathyPoints: {
-      type: Array,
+      type: Object,
       default: () => {
-        return [];
+        return { x: [], y: [], value: [] };
       },
     },
     maxDepth: {
       type: Number,
-      default: 1000,
+      default: 100,
     },
   },
   data() {
@@ -60,6 +62,7 @@ export default {
       pointsSeries: undefined,
       bathyPointsSeries: undefined,
       turbo: {},
+      bathyHeatmapPoints: [],
     };
   },
   watch: {
@@ -68,6 +71,23 @@ export default {
       this.zoomOutToMap();
     },
     bathyPoints() {
+      // remap bathy points to heatmap grid series
+      // array of arrays of values for each row
+      this.bathyHeatmapPoints = remapDataToTwoDimensionalMatrix(
+        this.bathyPoints.value,
+        this.bathyPoints.x.length,
+        this.bathyPoints.y.length
+      );
+      this.bathyYLen = this.bathyPoints.y.length;
+      this.bathyXLen = this.bathyPoints.x.length;
+      this.bathyStart = {
+        x: this.bathyPoints.x[0],
+        y: this.bathyPoints.y[0],
+      };
+      this.bathyEnd = {
+        x: this.bathyPoints.x[this.bathyPoints.x.length - 1],
+        y: this.bathyPoints.y[this.bathyPoints.y.length - 1],
+      };
       this.addPointsToCharts();
       this.zoomOutToMap();
     },
@@ -205,36 +225,43 @@ export default {
     },
     addPointsToCharts() {
       this.createTurbo();
-      // add bathy
-      if (this.bathyPoints.length > 0) {
+      // add bathy heatmap
+      if (this.bathyHeatmapPoints.length > 0) {
         if (this.bathyPointsSeries) this.bathyPointsSeries.dispose();
         this.bathyPointsSeries = this.chart
-          .addPointSeries({ pointShape: PointShape.Circle })
-          .setPointSize(5)
-          .setName('Bathy Depth')
-          .setPointFillStyle(
-            new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
-          )
-          .setIndividualPointValueEnabled(true);
-
-        this.bathyPoints.forEach((v) => {
-          this.bathyPointsSeries.add({
-            x: v.x,
-            y: v.y,
-            value: v.value,
-          });
-        });
+          .addHeatmapGridSeries({
+            columns: this.bathyXLen,
+            rows: this.bathyYLen,
+            start: this.bathyStart,
+            end: this.bathyEnd,
+            dataOrder: 'rows',
+          })
+          .setName('Bathymetry (ft)')
+          // Color Heatmap using previously created color look up table.
+          .setFillStyle(new PalettedFill({ lut: this.turbo }))
+          .invalidateIntensityValues(this.bathyHeatmapPoints)
+          .setWireframeStyle(emptyLine);
+        // Use look up table (LUT) to get heatmap intensity value coloring
 
         this.bathyPointsSeries.setCursorResultTableFormatter(
-          (builder, _, x, y, value) =>
+          (builder, series, dataPoint) =>
             builder
               .addRow('Bathy Data')
-              .addRow('latitude:', '', y.toFixed(4) + '  deg')
-              .addRow('longitude:', '', x.toFixed(4) + ' deg')
-              .addRow('depth:', '', value.value + ' m')
+              .addRow(
+                'longitude:',
+                '',
+                series.axisX.formatValue(dataPoint.x) + ' deg'
+              )
+              .addRow(
+                'latitude:',
+                '',
+                series.axisY.formatValue(dataPoint.y) + '  deg'
+              )
+              .addRow('depth:', '', dataPoint.intensity + ' m')
         );
       }
-      // add line
+
+      // add trajectory line
       if (this.pointsSeries) {
         this.pointsSeries.dispose();
         this.pointsSeries = undefined;
@@ -272,7 +299,7 @@ export default {
         this.legend.dispose();
         this.legend = undefined;
       }
-      if (this.bathyPoints.length > 0 || this.points.length > 0) {
+      if (this.bathyHeatmapPoints.length > 0 || this.points.length > 0) {
         this.legend = this.chart
           .addLegendBox()
           .add(this.chart)

@@ -206,7 +206,7 @@ async function processWaveform(audioBuffer, config) {
  * @param {number}      strideSize  Single data block width
  * @param {number}      tickCount    Data row count
  */
-function remapDataToTwoDimensionalMatrix(data, strideSize, tickCount) {
+export function remapDataToTwoDimensionalMatrix(data, strideSize, tickCount) {
   /**
    * @type {Array<number>}
    */

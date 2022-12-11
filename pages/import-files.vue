@@ -309,6 +309,7 @@
  * fix timestamp import time posixtodate
  * mdi doesn't load offline
  * make trajectory line segments not connect, then you can remove individual segments for nc files instead of rereading all
+ * use audio file date to check start time on correct day
  */
 
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
@@ -384,7 +385,7 @@ export default {
       ncData: [],
       csvFiles: [],
       bathyFiles: [],
-      bathyPoints: [],
+      bathyPoints: {},
       readVar: { name: '', variable: null },
       gliderData: [], // [{ time: [], latitude: [], longitude: [], depth: [] }], // length num files
       gliderDepth: [],
@@ -536,7 +537,6 @@ export default {
       if (this.bathyFiles.length > 0) {
         console.log('load bathy');
         const file = URL.createObjectURL(this.bathyFiles[0]);
-        const bathyData = [];
         let maxDepth = this.maxDepth;
         await getNetCDFVariables(file, [
           this.longitudeName,
@@ -545,21 +545,13 @@ export default {
         ]).then((v) => {
           const x = v[0]; // longitude
           const y = v[1]; // latitude
-          const z = v[2]; // elevation
-          let zCounter = 0;
-          for (let i = 0; i < y.length; i++) {
-            for (let j = 0; j < x.length; j++) {
-              const depth = this.depthPositive * z[zCounter]; // depth = elevation * -1
-              maxDepth = Math.max(maxDepth, depth);
-              bathyData.push({
-                x: x[j],
-                y: y[i],
-                value: depth,
-              });
-              zCounter++;
-            }
-          }
-          this.bathyPoints = bathyData;
+          let z = v[2]; // elevation
+          z = z.map((v, i) => {
+            const depth = v * this.depthPositive; // depth = elevation * -1
+            maxDepth = Math.max(maxDepth, depth);
+            return depth;
+          });
+          this.bathyPoints = { x, y, value: z };
           this.maxDepth = maxDepth;
         });
       }
