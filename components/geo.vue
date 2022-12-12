@@ -142,7 +142,7 @@ export default {
           theme: Themes.darkGold,
           container: `${this.chartId}`,
         })
-        // .setMouseInteractions(false)
+        // .setMouseInteractions(false)//TODO: disable?
         .setTitle('Geo Location')
         .setBackgroundFillStyle(transparentFill)
         .setSeriesBackgroundFillStyle(transparentFill)
@@ -246,16 +246,16 @@ export default {
         this.bathyPointsSeries.setCursorResultTableFormatter(
           (builder, series, dataPoint) =>
             builder
-              .addRow('Bathy Data')
-              .addRow(
-                'longitude:',
-                '',
-                series.axisX.formatValue(dataPoint.x) + ' deg'
-              )
+              .addRow('Bathymetric Data')
               .addRow(
                 'latitude:',
                 '',
                 series.axisY.formatValue(dataPoint.y) + '  deg'
+              )
+              .addRow(
+                'longitude:',
+                '',
+                series.axisX.formatValue(dataPoint.x) + ' deg'
               )
               .addRow('depth:', '', dataPoint.intensity + ' m')
         );
