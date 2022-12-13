@@ -97,6 +97,9 @@ export default {
       this.addTimeMarkers();
       // add cursors
       if (this.lineSeries1) this.addCustomCursor();
+
+      // add legend
+      this.addLegend();
     },
     spectrograms() {
       this.addTimeMarkers();
