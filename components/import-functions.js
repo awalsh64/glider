@@ -34,8 +34,11 @@ export function getNetCDFVariables(file, vars) {
   });
 }
 
-export function posixToDate(name) {
-  const date = new Date(name * 1000);
+/*
+ * unix time in seconds to start time in milliseconds
+ */
+export function unixToTime(unix) {
+  const date = new Date(unix * 1000);
   const hours = date.getHours();
   const minutes = date.getMinutes();
   const secs = date.getSeconds();
@@ -44,6 +47,11 @@ export function posixToDate(name) {
   return startTime;
 }
 
+/*
+ * file name in format yymmdd_hhmmss.wav or .mp3
+ * return start time (hours+minutes+seconds) in milliseconds
+ * and start date (unix) in milliseconds
+ */
 export function getStartTimeFromFilename(name) {
   let year = name.substr(name.length - 17, 2);
   year = '20'.concat(year);

@@ -323,7 +323,7 @@ import {
   getNetCDFVariables,
   loadAudioData,
   getStartTimeFromFilename,
-  posixToDate,
+  unixToTime,
 } from '@/components/import-functions.js';
 // File Upload Ex: https://serversideup.net/uploading-files-vuejs-axios/
 export default {
@@ -725,8 +725,8 @@ export default {
         console.log('load ', i);
         await loadAudioData(file, this.currentConfig).then((v) => {
           if (this.csvFiles.length > 0) {
-            v.startTime = posixToDate(this.csvFiles[i]);
-            v.startDate = new Date(this.csvFiles[i] * 1000); // TODO:check this
+            v.startTime = unixToTime(this.csvFiles[i]);
+            v.startDate = new Date(this.csvFiles[i] * 1000);
           } else {
             const times = getStartTimeFromFilename(file.name);
             v.startTime = times.startTime;
