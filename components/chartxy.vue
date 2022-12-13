@@ -31,25 +31,31 @@ import getTurboSteps from '@/components/turbo.js';
 export default {
   name: 'TrajectoryChart',
   props: {
-    // array of {x:time, y:depth, value:soundSpeed}
+    // array of {x:time (milliseconds since start of first file), y:depth, value:soundSpeed}
     points: {
       required: true,
       type: Array,
     },
-    // array of {x:time,y:temperature,z:salinity,value:soundSpeed}
+    // array of {x:time (milliseconds since start of first file),y:temperature,z:salinity,value:soundSpeed}
     points2: {
       required: true,
       type: Array,
     },
+    // time of first file in GMT to offset start of data time to correct date
     startDate: {
       required: true,
       type: Date,
     },
+    // array of spectrogram data {startTime (milliseconds since 1970-1-1 00:00:00), duration}
     spectrograms: {
       type: Array,
       default: () => {
         return [];
       },
+    },
+    currentTime: {
+      type: Number,
+      default: -1,
     },
   },
   data() {
@@ -85,6 +91,14 @@ export default {
     },
     spectrograms() {
       this.addTimeMarkers();
+    },
+    currentTime() {
+      const currentDate = this.currentTime - this.startDate.getTime();
+      if (this.timeSelectedLine) this.timeSelectedLine.dispose();
+      if (this.timeSelectedLine2) this.timeSelectedLine2.dispose();
+      this.timeSelectedLine = this.setSelectedTime(this.chart, currentDate);
+      this.timeSelectedLine2 = this.setSelectedTime(this.chart2, currentDate);
+      this.addLegend();
     },
   },
   beforeMount() {
@@ -290,16 +304,22 @@ export default {
         const selectedDate = this.plotTimeToDate(this.selectedTime);
         if (this.timeSelectedLine) this.timeSelectedLine.dispose();
         if (this.timeSelectedLine2) this.timeSelectedLine2.dispose();
-        this.timeSelectedLine = this.setSelectedTime(this.chart);
-        this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
+        this.timeSelectedLine = this.setSelectedTime(
+          this.chart,
+          this.selectedTime
+        );
+        this.timeSelectedLine2 = this.setSelectedTime(
+          this.chart2,
+          this.selectedTime
+        );
         this.addLegend();
         this.$emit('date', selectedDate);
       }
     },
     /**
-     * Add marker for clicked location
+     * Add marker for selected location (clicked on any plots)
      */
-    setSelectedTime(chart) {
+    setSelectedTime(chart, time) {
       if (this.selectedTime === null) {
         return;
       }
@@ -308,7 +328,7 @@ export default {
           .getDefaultAxisX()
           .addConstantLine()
           // Position the band in the Axis Scale
-          .setValue(this.selectedTime)
+          .setValue(time)
           .setName('Selected Time')
           .setMouseInteractions(false)
           .setStrokeStyle(
@@ -533,7 +553,7 @@ export default {
         this.spectroTimeMarker = [];
       }
       for (let i = 0; i < this.spectrograms.length; i++) {
-        const x = this.spectrograms[i].startTime - dateToHMS(this.startDate);
+        const x = this.spectrograms[i].startDate - this.startDate;
         const x2 = x + this.spectrograms[i].duration * 1000;
         // Add a transparent band to the X Axis
         this.spectroTimeMarker[i] = this.chart.getDefaultAxisX().addBand();
@@ -541,7 +561,7 @@ export default {
         this.spectroTimeMarker[i].setValueStart(x);
         this.spectroTimeMarker[i].setValueEnd(x2);
         // The name of the band will be shown in the LegendBox
-        this.spectroTimeMarker[i].setName('Spectrogram Time');
+        this.spectroTimeMarker[i].setName('Acoustic Time');
         this.spectroTimeMarker[i].setMouseInteractions(false);
 
         // add bands to temp salinity chart
@@ -552,29 +572,15 @@ export default {
           .setValueEnd(x2)
           .setName('Start Time')
           .setMouseInteractions(false);
-        // TODO: change color
-        // legend?
-
-        // const timeData = [];
-        // timeData.push({ x, y: 0 });
-        // timeData.push({ x, y: 100 }); // TODO:fix y max
-        // this.chart
-        //   .addLineSeries()
-        //   .setStrokeStyle(
-        //     (style) =>
-        //       style
-        //         .setThickness(3)
-        //         .setFillStyle(new SolidFill({ color: ColorHEX('#0000FF') })) // blue
-        //   )
-        //   .add(timeData);
       }
     },
     /**
      * Add line for clicked time selection
      */
     addSelectedTimeMarker() {
-      this.timeSelectedLine = this.setSelectedTime(this.chart);
-      this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
+      const selectedDate = this.plotTimeToDate(this.selectedTime);
+      this.timeSelectedLine = this.setSelectedTime(this.chart, selectedDate);
+      this.timeSelectedLine2 = this.setSelectedTime(this.chart2, selectedDate);
 
       this.chart.onSeriesBackgroundMouseUp((_, event) => {
         this.clickPlot(this.chart, this.lineSeries1, event);

@@ -35,10 +35,10 @@ export function getNetCDFVariables(file, vars) {
 }
 
 export function posixToDate(name) {
-  const hours = parseInt(name.substr(0, 2));
-  const minutes = name.substr(2, 2);
-  const secs = name.substr(4, 2);
-  console.log({ hours, minutes, secs });
+  const date = new Date(name * 1000);
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const secs = date.getSeconds();
   const startTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
   if (isNaN(startTime)) return 0;
   return startTime;
@@ -55,11 +55,11 @@ export function getStartTimeFromFilename(name) {
   const hours = parseInt(name.substr(name.length - 10, 2));
   const minutes = name.substr(name.length - 8, 2);
   const secs = name.substr(name.length - 6, 2);
-  console.log({ year, month, day, hours, minutes, secs });
   // const date = new Date(year, month, day, hours, minutes, secs);
   const startTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
+  const startDate = new Date(+year, month, +day, +hours, +minutes, +secs);
   if (isNaN(startTime)) return 0;
-  return startTime;
+  return { startTime, startDate };
 }
 
 /**

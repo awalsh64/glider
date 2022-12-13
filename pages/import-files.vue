@@ -457,38 +457,47 @@ export default {
     selectedTime(v) {
       this.sound.currentTime = v / 1000 - 0.1;
     },
-    selectedDate(v) {
+    selectedDate(date) {
       // return if no spectrograms created
       if (this.spectrogramData.length === 0) return;
-      // find spectrogramData.startTime that starts closest to selectedTime
-      const hours = v.getHours();
-      const minutes = v.getMinutes();
-      const secs = v.getSeconds();
+      // find spectrogramData.startTime that starts closest to selectedDate
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const secs = date.getSeconds();
       this.selectedTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
       const index = this.spectrogramData.findIndex((data) => {
         // find index of the spectrogram after selected time
-        return this.selectedTime < data.startTime;
+        // return this.selectedTime < data.startTime;
+        return date < data.startDate;
       });
       // index-1 = spectrogram that starts before selected time
       let newIndex = index - 1;
+      // TODO: click outside of time coverage shouldn't select spectrogram
       if (index < 0) {
         // last spectrogram
         newIndex = this.spectrogramData.length - 1;
         if (
-          this.selectedTime >
-          this.spectrogramData[newIndex].startTime +
+          date >
+          this.spectrogramData[newIndex].startDate +
             this.spectrogramData[newIndex].duration * 1000
         ) {
           // selected time is beyond last spectrogram duration
           newIndex = -1;
         }
+      } else if (
+        date >
+        this.spectrogramData[newIndex].startDate +
+          this.spectrogramData[newIndex].duration * 1000
+      ) {
+        // beyond duration of spectrogram
+        newIndex = -1;
       }
       if (this.fileSelected !== newIndex) {
         // set new spectrogram if it is not the current selection
         this.fileSelected = newIndex;
         if (this.fileSelected >= 0) {
           // reset play time
-          this.currentTime = this.spectrogramData[this.fileSelected].startTime;
+          this.currentTime = 0; // this.spectrogramData[this.fileSelected].startTime;
         }
       }
       console.log('index', this.fileSelected);
@@ -631,7 +640,7 @@ export default {
               7.139 * 10 ** -13 * T * D ** 3; // documentation: Mackenzie equation (1981) http://resource.npl.co.uk/acoustics/techguides/soundseawater/underlying-phys.html
             // reference: K.V. Mackenzie, Nine-term equation for the sound speed in the oceans (1981) J. Acoust. Soc. Am. 70(3), pp 807-812
             return {
-              x: x - startTime, // time milliseconds
+              x: x - startTime, // time in milliseconds since start of nc data
               y: depth, // depth
               value: soundSpeed, // sound speed
             };
@@ -664,10 +673,7 @@ export default {
       this.gliderDepth = this.gliderDepth.concat(depthData);
       this.tempSalData = this.tempSalData.concat(tempSalData);
       this.latLonData = this.latLonData.concat(latLonData);
-      // offset time by timezone to GMT
-      this.startDate = new Date(
-        startTime + new Date(startTime * 1000).getTimezoneOffset() * 60000
-      );
+      this.startDate = new Date(startTime);
       this.maxDepth = maxDepth;
       this.ncFileSelected = this.ncFiles.length - 1;
       this.numNCLoaded = this.ncFiles.length;
@@ -719,12 +725,14 @@ export default {
         console.log('load ', i);
         await loadAudioData(file, this.currentConfig).then((v) => {
           if (this.csvFiles.length > 0) {
-            v.startTime = posixToDate(this.csvFiles[i].toString());
-            console.log(v.startTime);
-            console.log(getStartTimeFromFilename(file.name));
+            v.startTime = posixToDate(this.csvFiles[i]);
+            v.startDate = new Date(this.csvFiles[i] * 1000); // TODO:check this
           } else {
-            v.startTime = getStartTimeFromFilename(file.name);
+            const times = getStartTimeFromFilename(file.name);
+            v.startTime = times.startTime;
+            v.startDate = times.startDate;
           }
+
           data.push(v);
         });
       }
