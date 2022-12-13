@@ -81,19 +81,12 @@ export default {
       dataSeries: undefined,
       xAxis: null,
       currentTimeLine: null,
+      turbo: {},
     };
   },
   computed: {
     startTime() {
       return this.spectrogram.startTime;
-    },
-    turbo() {
-      const steps = getTurboSteps(this.minDecibel, this.maxDecibel, 0, 255);
-      return new LUT({
-        units: 'dB',
-        steps,
-        interpolate: false,
-      });
     },
   },
   watch: {
@@ -108,9 +101,11 @@ export default {
       this.currentTimeLine.setValue(this.currentTime);
     },
     minDecibel() {
+      this.createColormap();
       this.createLegend();
     },
     maxDecibel() {
+      this.createColormap();
       this.createLegend();
     },
   },
@@ -122,6 +117,7 @@ export default {
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM
     this.createChart();
+    this.createColormap();
     this.addDataToChart();
     this.setCurrentTime();
     this.setSelectedTime();
@@ -308,6 +304,14 @@ export default {
       //   .setValueEnd(55310000) // 55261999)
       //   // Set the name of the Band
       //   .setName('X Axis Band');
+    },
+    createColormap() {
+      const steps = getTurboSteps(this.minDecibel, this.maxDecibel, 0, 255);
+      this.turbo = new LUT({
+        units: 'dB',
+        steps,
+        interpolate: false,
+      });
     },
     createLegend() {
       // TODO: fix legend memory leak when creating new plot - added this.legend = undefined from LCJS example, might help?

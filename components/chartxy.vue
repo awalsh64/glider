@@ -1,5 +1,9 @@
 <template>
-  <div :id="chartId" class="fill"></div>
+  <div
+    :id="chartId"
+    class="fill"
+    :class="{ 'hide-trajectory': hideTrajectory, 'hide-temp': hideTemp }"
+  ></div>
 </template>
 
 <script>
@@ -25,7 +29,6 @@ import {
   PalettedFill,
   LUT,
 } from '@arction/lcjs';
-import dateToHMS from './utils.js';
 import getTurboSteps from '@/components/turbo.js';
 
 export default {
@@ -57,6 +60,14 @@ export default {
       type: Number,
       default: -1,
     },
+    hideTemp: {
+      type: Boolean,
+      default: false,
+    },
+    hideTrajectory: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     // Add the chart to the data in a way that Vue will not attach it's observers to it.
@@ -73,21 +84,19 @@ export default {
       timeSelectedLine: null,
       timeSelectedLine2: null,
       drag: false,
+      turbo: {},
     };
-  },
-  computed: {
-    turbo() {
-      const steps = getTurboSteps(1420, 1570, 1420, 1570);
-      return new LUT({
-        units: 'm/s',
-        steps,
-        interpolate: false,
-      });
-    },
   },
   watch: {
     points() {
-      this.createChart();
+      // set start of axis to start of first point
+      this.setAxisOriginTime();
+      // add points to charts
+      this.addLinesToCharts();
+      // add bars for spectrogram time coverage
+      this.addTimeMarkers();
+      // add cursors
+      if (this.lineSeries1) this.addCustomCursor();
     },
     spectrograms() {
       this.addTimeMarkers();
@@ -110,6 +119,24 @@ export default {
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM
     this.createChart();
+
+    // set start of axis to start of first point
+    this.setAxisOriginTime();
+
+    // add bars for spectrogram time coverage
+    this.addTimeMarkers();
+
+    // add points to charts
+    this.addLinesToCharts();
+
+    // add cursors
+    if (this.lineSeries1) this.addCustomCursor();
+
+    // add line for clicked time
+    this.addSelectedTimeMarker();
+
+    // add legend
+    this.addLegend();
   },
   beforeUnmount() {
     // "dispose" should be called when the component is unmounted to free all the resources used by the chart
@@ -121,9 +148,18 @@ export default {
     this.dashboard = undefined;
   },
   methods: {
+    createColormap() {
+      const steps = getTurboSteps(1420, 1570, 1420, 1570);
+      this.turbo = new LUT({
+        units: 'm/s',
+        steps,
+        interpolate: false,
+      });
+    },
     createChart() {
       console.log('create trajectory plot');
 
+      this.createColormap();
       if (this.chart) {
         this.chart.dispose();
         this.chart = undefined;
@@ -156,13 +192,7 @@ export default {
         .setMouseInteractionWheelZoom(false)
         .setPadding({ right: 100 });
 
-      // set axes titles
-      this.chart
-        .getDefaultAxisX()
-        .setAnimationScroll(undefined)
-        .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
-          tickStrategy.setDateOrigin(this.startDate)
-        ); // expects time in milliseconds
+      // setup axis
       this.chart
         .getDefaultAxisY()
         .setAnimationScroll(undefined)
@@ -185,12 +215,7 @@ export default {
         .setTitle('Temperature and Salinity')
         .setMouseInteractionWheelZoom(false);
 
-      // set axes titles
-      this.chart2
-        .getDefaultAxisX()
-        .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
-          tickStrategy.setDateOrigin(this.startDate)
-        ); // expects time in milliseconds
+      // setup axis
       this.tempAxis = this.chart2
         .getDefaultAxisY()
         .setTitle('Temperature (°C)')
@@ -213,12 +238,27 @@ export default {
 
       // Disable default auto cursor.
       this.chart2.setAutoCursorMode(AutoCursorModes.disabled);
+    },
+    setAxisOriginTime() {
+      this.chart
+        .getDefaultAxisX()
+        .setAnimationScroll(undefined)
+        .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
+          tickStrategy.setDateOrigin(this.startDate)
+        ); // expects time in milliseconds
 
-      // add bars for spectrogram time coverage
-      this.addTimeMarkers();
-
+      this.chart2
+        .getDefaultAxisX()
+        .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
+          tickStrategy.setDateOrigin(this.startDate)
+        ); // expects time in milliseconds
+    },
+    addLinesToCharts() {
       // Add line series to the chart for glider trajectory
-      if (this.lineSeries1) this.lineSeries1.dispose();
+      if (this.lineSeries1) {
+        this.lineSeries1.dispose();
+        this.lineSeries1 = undefined;
+      }
       this.lineSeries1 = this.chart
         .addLineSeries({ individualLookupValuesEnabled: true })
         .setName('Sound Speed')
@@ -234,7 +274,10 @@ export default {
         .add(this.points);
 
       // Add line series to the temp salinity chart for temperature
-      if (this.lineSeries2) this.lineSeries2.dispose();
+      if (this.lineSeries2) {
+        this.lineSeries2.dispose();
+        this.lineSeries2 = undefined;
+      }
       this.lineSeries2 = this.chart2
         .addLineSeries()
         .setName('Temperature (°C)')
@@ -261,15 +304,6 @@ export default {
         );
 
       console.log('points added');
-
-      // add cursors
-      if (this.lineSeries1) this.addCustomCursor();
-
-      // add line for clicked time
-      this.addSelectedTimeMarker();
-
-      // add legend
-      this.addLegend();
     },
     /**
      * add lines to legend
@@ -345,7 +379,7 @@ export default {
      * Set up custom cursor synced between plots
      */
     addCustomCursor() {
-      /// //////////// sync plots
+      // sync cursors between plots
 
       this.charts = [this.chart, this.chart2];
 
@@ -608,6 +642,13 @@ export default {
 </script>
 <style scoped>
 .fill {
-  height: 100%;
+  height: 80vh;
+  position: absolute;
+}
+.hide-trajectory {
+  top: -40vh;
+}
+.hide-temp {
+  top: 0;
 }
 </style>

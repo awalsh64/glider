@@ -110,7 +110,7 @@ export default {
     this.mapChart = undefined;
   },
   methods: {
-    createTurbo() {
+    createColormap() {
       const steps = getTurboSteps(0, this.maxDepth, 0, this.maxDepth);
       this.turbo = new LUT({
         units: 'meters',
@@ -224,10 +224,13 @@ export default {
       this.addPointsToCharts();
     },
     addPointsToCharts() {
-      this.createTurbo();
+      this.createColormap();
       // add bathy heatmap
       if (this.bathyHeatmapPoints.length > 0) {
-        if (this.bathyPointsSeries) this.bathyPointsSeries.dispose();
+        if (this.bathyPointsSeries) {
+          this.bathyPointsSeries.dispose();
+          this.bathyPointsSeries = undefined;
+        }
         this.bathyPointsSeries = this.chart
           .addHeatmapGridSeries({
             columns: this.bathyXLen,

@@ -66,7 +66,7 @@ export function getStartTimeFromFilename(name) {
   // const date = new Date(year, month, day, hours, minutes, secs);
   const startTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
   const startDate = new Date(+year, month, +day, +hours, +minutes, +secs);
-  if (isNaN(startTime)) return 0;
+  if (isNaN(startTime)) return { startTime: 0, startDate: 0 };
   return { startTime, startDate };
 }
 
@@ -235,13 +235,6 @@ export function remapDataToTwoDimensionalMatrix(data, strideSize, tickCount) {
     .map((_, i) => {
       return data.slice(i * strideSize, i * strideSize + strideSize);
     });
-  // const output = [];
-  // for (let row = 0; row < strideSize; row += 1) {
-  //   output[row] = [];
-  //   for (let col = 0; col < tickCount; col += 1) {
-  //     output[row][col] = data[col * strideSize + row];
-  //   }
-  // }
   console.log('done remapped');
   return output2;
 }

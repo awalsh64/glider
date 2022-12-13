@@ -1,7 +1,7 @@
 <template>
   <div>
     <v-expansion-panels>
-      <v-expansion-panel>
+      <v-expansion-panel class="mt-0">
         <v-expansion-panel-header
           >Add NetCDF files and select Read NetCDF to import.
         </v-expansion-panel-header>
@@ -83,8 +83,8 @@
           </p>
         </v-expansion-panel-content>
       </v-expansion-panel>
-      <v-expansion-panel>
-        <v-expansion-panel-header>
+      <v-expansion-panel class="mt-0">
+        <v-expansion-panel-header class="light-border">
           Add audio files (.wav or .mp3) and select Process Files to import.
           Select a file to view the Spectrogram.
         </v-expansion-panel-header>
@@ -190,8 +190,44 @@
       </v-expansion-panel>
     </v-expansion-panels>
 
+    <v-card flat height="42">
+      <v-row>
+        <v-col cols="3">
+          <v-checkbox
+            v-model="hideGeo"
+            class="mt-0 ml-6"
+            label="Hide Geo Location"
+            hide-details
+          ></v-checkbox>
+        </v-col>
+        <v-col cols="3">
+          <v-checkbox
+            v-model="hideTrajectory"
+            class="mt-0 ml-6"
+            label="Hide Glider Trajectory"
+            hide-details
+          ></v-checkbox>
+        </v-col>
+        <v-col cols="3">
+          <v-checkbox
+            v-model="hideTemp"
+            class="mt-0 ml-6"
+            label="Hide Temp/Salinity"
+            hide-details
+          ></v-checkbox>
+        </v-col>
+        <v-col cols="3">
+          <v-checkbox
+            v-model="hideSpec"
+            class="mt-0 ml-6"
+            label="Hide Spectrogram"
+            hide-details
+          ></v-checkbox>
+        </v-col>
+      </v-row>
+    </v-card>
     <!-- Geo Plot -->
-    <div class="map-holder">
+    <div v-if="!hideGeo" class="map-holder">
       <geo
         :points="latLonData"
         :bathy-points="bathyPoints"
@@ -200,18 +236,26 @@
     </div>
 
     <!-- Trajectory Plot -->
-    <div class="nc-plot-holder">
+    <div
+      v-if="!hideTrajectory || !hideTemp"
+      :class="{
+        'big-plot': !hideTrajectory && !hideTemp,
+        'small-plot': hideTrajectory || hideTemp,
+      }"
+    >
       <trajectory
         :points="gliderDepth"
         :points2="tempSalData"
         :start-date="startDate"
         :spectrograms="spectrogramData"
+        :hide-temp="hideTemp"
+        :hide-trajectory="hideTrajectory"
         @date="selectedDate = $event"
       />
     </div>
 
     <!-- Audio Player -->
-    <div>
+    <div id="audio-holder">
       <audio id="audio" controls>
         <source :src="audioSrc" type="audio/wav" />
         Your browser does not support the audio tag.
@@ -219,7 +263,7 @@
     </div>
 
     <!-- Spectrogram -->
-    <div class="plot-holder">
+    <div v-if="!hideSpec" class="big-plot">
       <heatmap
         :selected-time.sync="selectedTime"
         :spectrogram="spectrogramData[fileSelected]"
@@ -228,21 +272,6 @@
         :current-time="currentTime"
       />
     </div>
-
-    <!-- <div>
-      <p>Select a Variable</p>
-      <div class="variable-holder">
-        <div v-for="(variable, key) in variables" :key="key">
-          <v-btn color="purple" @click="selectVariable(key)"
-            >{{ key }}. {{ variable.name }}</v-btn
-          >
-        </div>
-      </div>
-      <div class="variable-holder">
-        <p>Selected Variable:</p>
-        {{ selectedVariable }}
-      </div>
-    </div> -->
   </div>
 </template>
 
@@ -336,6 +365,10 @@ export default {
   },
   data() {
     return {
+      hideGeo: false,
+      hideTrajectory: false,
+      hideTemp: false,
+      hideSpec: false,
       depthPositive: -1,
       latitudeName: 'lat',
       longitudeName: 'lon',
@@ -766,19 +799,18 @@ span.select-file {
   height: 50vh;
 }
 
-.plot-holder {
+.big-plot {
   height: 80vh;
 }
 
-.nc-plot-holder {
-  height: 80vh;
-}
-
-.variable-holder {
+.small-plot {
   height: 40vh;
-  width: 42vw;
-  overflow-y: scroll;
-  float: left;
+}
+#audio-holder {
+  height: 54px;
+}
+.light-border {
+  border-top: 1px solid #454545;
 }
 
 #audio {
