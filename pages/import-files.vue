@@ -406,12 +406,11 @@ export default {
       selectedTime: 1,
       ctdTimeIndex: 0,
       ctdDepthIndex: 1,
-      depthIndex: 1, // ctd_depth
-      latitudeIndex: 3,
-      longitudeIndex: 4,
-      temperatureIndex: 5,
-      salinityIndex: 6,
-      svpIndex: 7,
+      latitudeIndex: 2,
+      longitudeIndex: 3,
+      temperatureIndex: 4,
+      salinityIndex: 5,
+      speedIndex: 6,
       spectrogramData: [],
       audioFiles: [],
       ncFiles: [],
@@ -633,12 +632,10 @@ export default {
         await getNetCDFVariables(file, [
           'ctd_time', // unix timestamp - seconds since 1970-1-1 00:00:00
           'ctd_depth', // meters
-          'depth', // meters
           'latitude', // deg
           'longitude', // deg
           'temperature', // deg Celsius
           'salinity_raw', // ppt
-          'sound_velocity', // m/s
           'speed', // cm/s
         ]).then((v) => {
           // TODO: change variables to object to avoid wrong indexing
@@ -656,7 +653,7 @@ export default {
           // create glider depth profile
           const time = v[this.ctdTimeIndex];
           const oneDive = time.map((x, i) => {
-            const depth = v[this.depthIndex][i]; // meters
+            const depth = v[this.ctdDepthIndex][i]; // meters
             maxDepth = Math.max(maxDepth, depth);
             const T = v[this.temperatureIndex][i]; // Celcius
             const S = v[this.salinityIndex][i]; // ppt
@@ -695,7 +692,7 @@ export default {
               x: v[this.longitudeIndex][i], // longitude
               y: v[this.latitudeIndex][i], // latitude
               value: dive.y, // depth
-              speed: v[8][i], // speed
+              speed: v[this.speedIndex][i], // speed
             };
           });
           latLonData = latLonData.concat(latitudeLongitude);
