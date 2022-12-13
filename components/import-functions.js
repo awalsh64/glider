@@ -25,7 +25,11 @@ export function getNetCDFVariables(file, vars) {
         dataset = reader.variables;
       } else {
         for (let i = 0; i < vars.length; i++) {
-          dataset.push(reader.getDataVariable(vars[i]));
+          if (reader.dataVariableExists(vars[i])) {
+            dataset.push(reader.getDataVariable(vars[i]));
+          } else {
+            alert('Missing ' + vars[i] + ' variable!');
+          }
         }
       }
       resolve(dataset);
