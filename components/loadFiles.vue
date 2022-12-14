@@ -1,6 +1,8 @@
 <template>
   <!-- File List -->
-  <div class="file-holder">
+  <div
+    :class="{ 'single-file-holder': singleFile, 'file-holder': !singleFile }"
+  >
     <label>
       <span v-if="singleFile">{{ fileType }} File:</span>
       <span v-else>{{ fileType }} Files:</span>
@@ -203,5 +205,8 @@ export default {
   border: 5px solid #00dc82;
   width: 95%;
   height: 60px;
+}
+.single-file-holder {
+  height: 20vh;
 }
 </style>

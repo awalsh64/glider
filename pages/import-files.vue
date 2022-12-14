@@ -2,10 +2,12 @@
   <div>
     <v-expansion-panels>
       <v-expansion-panel class="mt-0">
-        <v-expansion-panel-header
-          >Add NetCDF files and select Read NetCDF to import.
-        </v-expansion-panel-header>
+        <v-expansion-panel-header>Add NetCDF Files </v-expansion-panel-header>
         <v-expansion-panel-content>
+          <p>
+            Add files, then select Read NetCDF to import the data. Select Load
+            Bathy to import a bathymetric NetCDF file.
+          </p>
           <p>
             <!-- NetCDF files -->
             <load-files
@@ -61,21 +63,25 @@
                     clearable
                   ></v-text-field>
                   <v-radio-group v-model="depthPositive">
-                    <v-radio
-                      :label="`Positive Above Sea Level`"
-                      :value="-1"
-                    ></v-radio>
-                    <v-radio
-                      :label="`Positive Below Sea Level`"
-                      :value="1"
-                    ></v-radio>
+                    <v-row>
+                      <v-col cols="4">
+                        <v-radio
+                          :label="`Positive Above Sea Level`"
+                          :value="-1"
+                        ></v-radio>
+                      </v-col>
+                      <v-col cols="4">
+                        <v-radio
+                          :label="`Positive Below Sea Level`"
+                          :value="1"
+                        ></v-radio>
+                      </v-col>
+                    </v-row>
                   </v-radio-group>
                 </v-card-text>
                 <v-card-actions>
                   <v-spacer></v-spacer>
-                  <v-btn color="primary" text @click="loadBathy">
-                    Submit
-                  </v-btn>
+                  <v-btn color="primary" @click="loadBathy"> Submit </v-btn>
                 </v-card-actions>
               </v-card>
             </v-dialog>
@@ -85,10 +91,17 @@
       </v-expansion-panel>
       <v-expansion-panel class="mt-0">
         <v-expansion-panel-header class="light-border">
-          Add audio files (.wav or .mp3) and select Process Files to import.
-          Select a file to view the Spectrogram.
+          Add Audio Files
         </v-expansion-panel-header>
         <v-expansion-panel-content>
+          <p>
+            Add .wav or .mp3 files, then select Process Files to import. Before
+            processing, select FFT Parameters to modify the parameters, and
+            select Load Timestamps to import a .csv file of audio file start
+            times. Once processed, select a file to view the spectrogram. You
+            must reselect Process Files after changing the FFT Parameters or
+            timestamps.
+          </p>
           <!-- Audio Files -->
           <load-files
             :allowed-extensions="/(\.mp3|\.wav)$/i"
@@ -149,7 +162,7 @@
                 <v-divider></v-divider>
                 <v-card-actions>
                   <v-spacer></v-spacer>
-                  <v-btn color="primary" text @click="dialog = false">
+                  <v-btn color="primary" @click="dialog = false">
                     Submit
                   </v-btn>
                 </v-card-actions>
@@ -176,9 +189,7 @@
                 </v-card-text>
                 <v-card-actions>
                   <v-spacer></v-spacer>
-                  <v-btn color="primary" text @click="loadTimestamp">
-                    Submit
-                  </v-btn>
+                  <v-btn color="primary" @click="loadTimestamp"> Submit </v-btn>
                 </v-card-actions>
               </v-card>
             </v-dialog>
@@ -190,42 +201,6 @@
       </v-expansion-panel>
     </v-expansion-panels>
 
-    <v-card flat height="42">
-      <v-row>
-        <v-col cols="3">
-          <v-checkbox
-            v-model="hideGeo"
-            class="mt-0 ml-6"
-            label="Hide Geo Location"
-            hide-details
-          ></v-checkbox>
-        </v-col>
-        <v-col cols="3">
-          <v-checkbox
-            v-model="hideTrajectory"
-            class="mt-0 ml-6"
-            label="Hide Glider Trajectory"
-            hide-details
-          ></v-checkbox>
-        </v-col>
-        <v-col cols="3">
-          <v-checkbox
-            v-model="hideTemp"
-            class="mt-0 ml-6"
-            label="Hide Temp/Salinity"
-            hide-details
-          ></v-checkbox>
-        </v-col>
-        <v-col cols="3">
-          <v-checkbox
-            v-model="hideSpec"
-            class="mt-0 ml-6"
-            label="Hide Spectrogram"
-            hide-details
-          ></v-checkbox>
-        </v-col>
-      </v-row>
-    </v-card>
     <!-- Geo Plot -->
     <div v-if="!hideGeo" class="map-holder">
       <geo
@@ -272,6 +247,44 @@
         :current-time="currentTime"
       />
     </div>
+
+    <!-- Hide Plot Buttons -->
+    <v-card flat height="52">
+      <v-row>
+        <v-col cols="3">
+          <v-checkbox
+            v-model="hideGeo"
+            class="mt-0 ml-6"
+            label="Hide Geo Location"
+            hide-details
+          ></v-checkbox>
+        </v-col>
+        <v-col cols="3">
+          <v-checkbox
+            v-model="hideTrajectory"
+            class="mt-0 ml-6"
+            label="Hide Glider Trajectory"
+            hide-details
+          ></v-checkbox>
+        </v-col>
+        <v-col cols="3">
+          <v-checkbox
+            v-model="hideTemp"
+            class="mt-0 ml-6"
+            label="Hide Temp/Salinity"
+            hide-details
+          ></v-checkbox>
+        </v-col>
+        <v-col cols="3">
+          <v-checkbox
+            v-model="hideSpec"
+            class="mt-0 ml-6"
+            label="Hide Spectrogram"
+            hide-details
+          ></v-checkbox>
+        </v-col>
+      </v-row>
+    </v-card>
   </div>
 </template>
 
@@ -378,8 +391,8 @@ export default {
       dialog2: false,
       dialog3: false,
       nfftOptions: [256, 512, 1024, 2048, 4096, 8192, 16384],
-      nfftSelected: 256, // TODO:2048
-      processorBufferSizeInput: 2048,
+      nfftSelected: 1024, // TODO:2048
+      processorBufferSizeInput: 1024,
       sampleRateInput: 32000, // TODO:128000,
       minDecibelInput: -160,
       maxDecibelInput: -60,

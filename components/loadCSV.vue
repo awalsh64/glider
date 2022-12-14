@@ -2,8 +2,11 @@
   <!-- File List -->
   <div class="file-holder">
     <label>
-      You can load a csv file of timestamps associated with the audio files. If
-      no file is loaded, the timestamps will default to the file name.
+      <p>
+        You can load a csv file of unix timestamps associated with the audio
+        files in order in the format of seconds since January 1st, 1970. If no
+        file is loaded, the timestamps will default to the file name.
+      </p>
       <!-- Add Files -->
       <v-btn
         v-if="!hideButtons"
