@@ -291,6 +291,11 @@
 <script>
 /**
  * TODO:
+ * fix glider plot zoom out
+ * modal for loading
+ * fix loading and removing netcdfs
+ * add dive number to tooltips
+ * check build for images
  * DONE-get correct colormap
  * DONE-determine this.minDecibels,this.maxDecibels, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/maxDecibels
  * DONE-drag and drop files
@@ -307,18 +312,18 @@
  * DONE- import bathymetry
  * DONE-get new improved colormap > jet Turbo
  * DONE-depth vs. ctd_depth - change depthData variable index - depth_ctd is better!!!
- * overlays - bathy, sea surface temp, chlorophyl (how to import, file type)
- * show all spectrograms by scrolling down
- * upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
+ * DONE-overlays - bathy, sea surface temp, chlorophyl (how to import, file type)
+ * NO-show all spectrograms by scrolling down
+ * NO-upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
  * fix npm run build for path stuff	https://elpan.dev/en/deploy-nuxt-js-on-github-pages
  * DONE-Make spectrogram config parameters adjustable by user
- * change getByteFrequencyData to getFloatFrequencyData if better precision needed, need to fix array remap
+ * NO-change getByteFrequencyData to getFloatFrequencyData if better precision needed, need to fix array remap
  * ask Mel where the whales are
  * Layout:
  * |map|profiles|
  * |spectrograms|
  * change netCDF variables to object to avoid wrong indexing, handle missing variables
- * handle missing netCDF variables
+ * DONE-handle missing netCDF variables
  * DONE-make heatmap range (decibel range) user prop
  * DONE-what happens when you remove last file
  * DONE-Load audio start time from inputable look up table or read .cap file
