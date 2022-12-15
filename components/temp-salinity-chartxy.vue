@@ -65,6 +65,7 @@ export default {
   beforeUnmount() {
     // "dispose" should be called when the component is unmounted to free all the resources used by the chart
     this.chart.dispose();
+    this.chart = undefined;
   },
   methods: {
     createChart() {

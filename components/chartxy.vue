@@ -4,13 +4,15 @@
 
 <script>
 // TODO: add bars for start and end time of spectrograms https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-0701-bandsConstantlines.html
-// TODO: Disable click when zooming(mousedrag) when no spectrogram (crashes)
-// TODO: Dashboard for trajectory and temp/sal https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0704-customCursorStackedY.html?theme=lightNew&page-theme=light
+// TODO-DONE: Disable click when zooming(mousedrag) when no spectrogram (crashes)
+// TODO-DONE: Dashboard for trajectory and temp/sal https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0704-customCursorStackedY.html?theme=lightNew&page-theme=light
 // add click to temp sal
+// TODO-DONE: Disable click when zooming(mousedrag)
 
 import {
   lightningChart,
   SolidFill,
+  SolidLine,
   ColorHEX,
   translatePoint,
   AxisTickStrategies,
@@ -24,14 +26,17 @@ import {
   LUT,
 } from '@arction/lcjs';
 import dateToHMS from './utils.js';
+import getTurboSteps from '@/components/turbo.js';
 
 export default {
   name: 'TrajectoryChart',
   props: {
+    // array of {x:time, y:depth, value:soundSpeed}
     points: {
       required: true,
       type: Array,
     },
+    // array of {x:time,y:temperature,z:salinity,value:soundSpeed}
     points2: {
       required: true,
       type: Array,
@@ -57,54 +62,23 @@ export default {
       legend: undefined,
       chartId: null,
       selectedTime: null,
-      timeMarkerLine: [],
+      spectroTimeMarker: [],
       xAxis: null,
-      lut: new LUT({
-        // https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0052-linePaletteValue.html?theme=lightNew&page-theme=light
-        units: 'm/s',
-        steps: [
-          {
-            value: 1450,
-            color: ColorHEX('#000090'),
-          },
-          {
-            value: 1450 + 120 * (1 / 8),
-            color: ColorHEX('#000fff'),
-          },
-          {
-            value: 1450 + 120 * (2 / 8),
-            color: ColorHEX('#0090ff'),
-          },
-          {
-            value: 1450 + 120 * (3 / 8),
-            color: ColorHEX('#0fffee'),
-          },
-          {
-            value: 1450 + 120 * (4 / 8),
-            color: ColorHEX('#90ff70'),
-          },
-          {
-            value: 1450 + 120 * (5 / 8),
-            color: ColorHEX('#ffee00'),
-          },
-          {
-            value: 1450 + 120 * (6 / 8),
-            color: ColorHEX('#ff7000'),
-          },
-          {
-            value: 1450 + 120 * (7 / 8),
-            color: ColorHEX('#ee0000'),
-          },
-          {
-            value: 1570,
-            color: ColorHEX('#7f0000'),
-          },
-        ],
-        interpolate: true,
-      }),
+      timeSelectedLine: null,
+      timeSelectedLine2: null,
+      drag: false,
     };
   },
-  computed: {},
+  computed: {
+    turbo() {
+      const steps = getTurboSteps(1420, 1570, 1420, 1570);
+      return new LUT({
+        units: 'm/s',
+        steps,
+        interpolate: false,
+      });
+    },
+  },
   watch: {
     points() {
       this.createChart();
@@ -126,15 +100,28 @@ export default {
   beforeUnmount() {
     // "dispose" should be called when the component is unmounted to free all the resources used by the chart
     this.chart.dispose();
+    this.chart = undefined;
+    this.chart2.dispose();
+    this.chart2 = undefined;
+    this.dashboard.dispose();
+    this.dashboard = undefined;
   },
   methods: {
     createChart() {
       console.log('create trajectory plot');
-      if (this.legend) {
-        this.legend.dispose();
-        this.legend = undefined;
-      }
 
+      if (this.chart) {
+        this.chart.dispose();
+        this.chart = undefined;
+      }
+      if (this.chart2) {
+        this.chart2.dispose();
+        this.chart2 = undefined;
+      }
+      if (this.dashboard) {
+        this.dashboard.dispose();
+        this.dashboard = undefined;
+      }
       // Create chartXY
       // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/dashboard.html#createchartxy
       this.dashboard = lightningChart().Dashboard({
@@ -165,27 +152,11 @@ export default {
       this.chart
         .getDefaultAxisY()
         .setAnimationScroll(undefined)
-        .setTitle('Depth (ft)')
+        .setTitle('Depth (meters)')
         .setInterval(1, -1);
 
       // Disable default auto cursor.
       this.chart.setAutoCursorMode(AutoCursorModes.disabled);
-      // Add line series to the chart for glider trajectory
-      this.lineSeries1 = this.chart
-        .addLineSeries({ individualLookupValuesEnabled: true })
-        .setName('Sound Speed')
-        // Set stroke style of the line
-        .setStrokeStyle((style) => style.setThickness(5))
-        // Colormap line color
-        .setStrokeStyle((stroke) =>
-          stroke.setFillStyle(
-            new PalettedFill({ lookUpProperty: 'value', lut: this.lut })
-          )
-        )
-        // Add data points to the line series
-        .add(this.points);
-
-      this.legend = this.chart.addLegendBox().add(this.chart);
 
       /// //// Temperature and Salinity Chart
 
@@ -206,15 +177,15 @@ export default {
         .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
           tickStrategy.setDateOrigin(this.startDate)
         ); // expects time in milliseconds
-      const tempAxis = this.chart2
+      this.tempAxis = this.chart2
         .getDefaultAxisY()
         .setTitle('Temperature (°C)')
         .setTitleFillStyle(new SolidFill({ color: ColorHEX('#ffff5b') }))
         .setAnimationScroll(undefined);
-      const salinityAxis = this.chart2
+      this.salinityAxis = this.chart2
         .addAxisY({
           opposite: true,
-          color: 'orange', // TODO: make Salinity title match line color so you don't need a legend
+          color: 'orange',
         })
         .setAnimationScroll(undefined)
         .setTitle('Salinity (ppt)')
@@ -229,7 +200,27 @@ export default {
       // Disable default auto cursor.
       this.chart2.setAutoCursorMode(AutoCursorModes.disabled);
 
-      // Add line series to the chart for temperature
+      // add bars for spectrogram time coverage
+      this.addTimeMarkers();
+
+      // Add line series to the chart for glider trajectory
+      if (this.lineSeries1) this.lineSeries1.dispose();
+      this.lineSeries1 = this.chart
+        .addLineSeries({ individualLookupValuesEnabled: true })
+        .setName('Sound Speed')
+        // Set stroke style of the line
+        .setStrokeStyle((style) => style.setThickness(5))
+        // Colormap line color
+        .setStrokeStyle((stroke) =>
+          stroke.setFillStyle(
+            new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
+          )
+        )
+        // Add data points to the line series
+        .add(this.points);
+
+      // Add line series to the temp salinity chart for temperature
+      if (this.lineSeries2) this.lineSeries2.dispose();
       this.lineSeries2 = this.chart2
         .addLineSeries()
         .setName('Temperature (°C)')
@@ -237,10 +228,12 @@ export default {
         .setStrokeStyle((style) => style.setThickness(3))
         // Add data points to the line series
         .add(this.points2);
+
       // Add line series to the chart for salinity
+      if (this.lineSeries3) this.lineSeries3.dispose();
       this.lineSeries3 = this.chart2
         .addLineSeries({
-          yAxis: salinityAxis,
+          yAxis: this.salinityAxis,
           // Specify index for automatic color selection. By default this would be 1, but a larger number is supplied to increase contrast between series.
           automaticColorIndex: 2,
         })
@@ -255,6 +248,83 @@ export default {
 
       console.log('points added');
 
+      // add cursors
+      if (this.lineSeries1) this.addCustomCursor();
+
+      // add line for clicked time
+      this.addSelectedTimeMarker();
+
+      // add legend
+      this.addLegend();
+    },
+    /**
+     * add lines to legend
+     */
+    addLegend() {
+      if (this.legend) {
+        this.legend.dispose();
+        this.legend = undefined;
+      }
+
+      if (this.points.length > 0) {
+        this.legend = this.chart
+          .addLegendBox()
+          .add(this.chart)
+          .setPosition({ x: 100, y: 50 });
+      }
+    },
+    setDrag() {
+      this.drag = true;
+    },
+    clickPlot(plot, line, event) {
+      if (this.drag) {
+        this.drag = false;
+      } else {
+        // Translate mouse location to Axis coordinate system.
+        const curLocationAxis = translatePoint(
+          plot.engine.clientLocation2Engine(event.clientX, event.clientY),
+          plot.engine.scale,
+          line.scale
+        );
+        this.selectedTime = curLocationAxis.x;
+        const selectedDate = this.plotTimeToDate(this.selectedTime);
+        if (this.timeSelectedLine) this.timeSelectedLine.dispose();
+        if (this.timeSelectedLine2) this.timeSelectedLine2.dispose();
+        this.timeSelectedLine = this.setSelectedTime(this.chart);
+        this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
+        this.addLegend();
+        this.$emit('date', selectedDate);
+      }
+    },
+    /**
+     * Add marker for clicked location
+     */
+    setSelectedTime(chart) {
+      if (this.selectedTime === null) {
+        return;
+      }
+      return (
+        chart
+          .getDefaultAxisX()
+          .addConstantLine()
+          // Position the band in the Axis Scale
+          .setValue(this.selectedTime)
+          .setName('Selected Time')
+          .setMouseInteractions(false)
+          .setStrokeStyle(
+            new SolidLine({
+              thickness: 2,
+              fillStyle: new SolidFill({
+                color: ColorHEX('#FF00FF'), // magenta
+              }),
+            })
+          )
+      );
+    },
+    /**
+     * Set up custom cursor synced between plots
+     */
+    addCustomCursor() {
       /// //////////// sync plots
 
       this.charts = [this.chart, this.chart2];
@@ -330,7 +400,9 @@ export default {
         .getDefaultAxisY()
         .addCustomTick()
         .setAllocatesAxisSpace(false);
-      ticksY[2] = salinityAxis.addCustomTick().setAllocatesAxisSpace(false);
+      ticksY[2] = this.salinityAxis
+        .addCustomTick()
+        .setAllocatesAxisSpace(false);
 
       const setCustomCursorVisible = (visible) => {
         if (!visible) {
@@ -407,7 +479,7 @@ export default {
               .formatValue(nearestDataPoints[i].location.x)}`
           );
           const titles = ['Depth', 'Temp', 'Salinity'];
-          const units = ['feet', '°C', 'ppt'];
+          const units = ['m', '°C', 'ppt'];
           rowsY.forEach((rowY, i) => {
             let chart = i;
             if (i > 1) chart = 1;
@@ -447,78 +519,40 @@ export default {
           setCustomCursorVisible(false);
         });
       });
-
-      /// /////////////////
-
-      this.addTimeMarkers();
-
-      // Add line for time selection
-      this.timeSelectedLine = this.setSelectedTime();
-
-      this.chart.onSeriesBackgroundMouseClick((_, event) => {
-        // TODO: Disable click when zooming(mousedrag)
-
-        // Translate mouse location to Axis coordinate system.
-        const curLocationAxis = translatePoint(
-          this.chart.engine.clientLocation2Engine(event.clientX, event.clientY),
-          this.chart.engine.scale,
-          this.lineSeries1.scale
-        );
-        this.selectedTime = curLocationAxis.x;
-        const selectedDate = this.plotTimeToDate(this.selectedTime);
-        if (this.timeSelectedLine) this.timeSelectedLine.dispose();
-        this.timeSelectedLine = this.setSelectedTime();
-        this.$emit('date', selectedDate);
-      });
-    },
-    /**
-     * Add marker for clicked location
-     */
-    setSelectedTime() {
-      if (this.selectedTime === null) {
-        return;
-      }
-
-      // TODO: y axis doesn't update until clicked
-      const yMin = this.chart.getDefaultAxisY().getInterval().start;
-      return this.chart
-        .addLineSeries()
-        .setStrokeStyle((style) =>
-          style
-            .setThickness(3)
-            .setFillStyle(new SolidFill({ color: ColorHEX('#F00') }))
-        )
-        .add([
-          { x: this.selectedTime, y: yMin },
-          { x: this.selectedTime, y: 0 },
-        ]);
     },
     /**
      * Add markers for spectrogram start time
      */
     addTimeMarkers() {
-      for (let i = 0; i < this.timeMarkerLine.length; i++) {
-        // remove previously made lines
-        this.timeMarkerLine[i].dispose();
+      if (this.spectroTimeMarker) {
+        for (let i = 0; i < this.spectroTimeMarker.length; i++) {
+          // remove previously made lines
+          this.spectroTimeMarker[i].dispose();
+          this.spectroTimeMarker[i] = undefined;
+        }
+        this.spectroTimeMarker = [];
       }
       for (let i = 0; i < this.spectrograms.length; i++) {
         const x = this.spectrograms[i].startTime - dateToHMS(this.startDate);
-        console.log(x);
-        // Add a Constantline to the X Axis
-        this.timeMarkerLine[i] = this.chart.getDefaultAxisX().addConstantLine();
-        // Position the Constantline in the Axis Scale
-        this.timeMarkerLine[i].setValue(x);
-        // The name of the Constantline will be shown in the LegendBox
-        this.timeMarkerLine[i].setName('Start Time');
+        const x2 = x + this.spectrograms[i].duration * 1000;
+        // Add a transparent band to the X Axis
+        this.spectroTimeMarker[i] = this.chart.getDefaultAxisX().addBand();
+        // Position the band in the Axis Scale
+        this.spectroTimeMarker[i].setValueStart(x);
+        this.spectroTimeMarker[i].setValueEnd(x2);
+        // The name of the band will be shown in the LegendBox
+        this.spectroTimeMarker[i].setName('Spectrogram Time');
+        this.spectroTimeMarker[i].setMouseInteractions(false);
 
-        // add lines to temp salinity chart
-        this.timeMarkerLine[i + this.spectrograms.length] = this.chart2
+        // add bands to temp salinity chart
+        this.spectroTimeMarker[i + this.spectrograms.length] = this.chart2
           .getDefaultAxisX()
-          .addConstantLine();
-        this.timeMarkerLine[i + this.spectrograms.length].setValue(x);
-        this.timeMarkerLine[i + this.spectrograms.length].setName('Start Time');
+          .addBand()
+          .setValueStart(x)
+          .setValueEnd(x2)
+          .setName('Start Time')
+          .setMouseInteractions(false);
         // TODO: change color
-        // turn off drag
         // legend?
 
         // const timeData = [];
@@ -535,6 +569,31 @@ export default {
         //   .add(timeData);
       }
     },
+    /**
+     * Add line for clicked time selection
+     */
+    addSelectedTimeMarker() {
+      this.timeSelectedLine = this.setSelectedTime(this.chart);
+      this.timeSelectedLine2 = this.setSelectedTime(this.chart2);
+
+      this.chart.onSeriesBackgroundMouseUp((_, event) => {
+        this.clickPlot(this.chart, this.lineSeries1, event);
+      });
+
+      this.chart2.onSeriesBackgroundMouseUp((_, event) => {
+        this.clickPlot(this.chart2, this.lineSeries2, event);
+      });
+
+      this.chart.onSeriesBackgroundMouseDrag(() => {
+        this.setDrag();
+      });
+      this.chart2.onSeriesBackgroundMouseDrag(() => {
+        this.setDrag();
+      });
+    },
+    /**
+     * Convert the time from the plot axis format to the date format used for emitting
+     */
     plotTimeToDate(plotTime) {
       return new Date(plotTime + this.startDate.getTime());
     },

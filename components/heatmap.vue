@@ -3,12 +3,12 @@
 </template>
 
 <script>
-// TODO: axis.addBand for current song playing location
+// TODO-DONE: axis.addBand for current song playing location
 // Extract required parts from LightningChartJS.
 // Add instruction for manipulating plots
 // convert x axis from seconds to milliseconds for use with Time axis
-// fix legend
-// change x axis range on file load
+// DONE-fix legend
+// DONE-change x axis range on file load
 
 // plot interactions:
 // zoom in with left click drag left to right rectangle
@@ -26,14 +26,17 @@ import {
   lightningChart,
   PalettedFill,
   LUT,
-  ColorHSV,
-  SolidFill,
-  ColorHEX,
   emptyLine,
+  translatePoint,
   Themes,
   LegendBoxBuilders,
   AxisTickStrategies,
+  SolidFill,
+  SolidLine,
+  ColorHEX,
 } from '@arction/lcjs';
+
+import getTurboSteps from '@/components/turbo.js';
 
 export default {
   name: 'HeatmapChart',
@@ -45,10 +48,6 @@ export default {
     selectedTime: {
       type: Number,
       default: 1,
-    },
-    index: {
-      type: Number,
-      default: 0,
     },
     spectrogram: {
       type: Object,
@@ -69,7 +68,8 @@ export default {
     // Add the chart to the data in a way that Vue will not attach it's observers to it.
     // If the chart variable would be added in the return object, Vue would attach the observers and
     // every time LightningChart JS made a change to any of it's internal variables, vue would try to observe the change and update.
-    // Observing would slow down the chart a lot .
+    // Observing would slow down the chart a lot.
+    // https://github.com/Arction/lcjs-vue-template
     this.chart = null;
     return {
       chartId: null,
@@ -84,74 +84,26 @@ export default {
     };
   },
   computed: {
-    palette() {
-      // slow
-      console.log('LUT');
-      // Jet Colormap Documentation: http://www.gnuplotting.org/matlab-colorbar-with-gnuplot/
+    startTime() {
+      return this.spectrogram.startTime;
+    },
+    turbo() {
+      const steps = getTurboSteps(this.minDecibel, this.maxDecibel, 0, 255);
       return new LUT({
         units: 'dB',
-        steps: [
-          {
-            value: 0,
-            color: ColorHEX('#000090'),
-            label: `${Math.round(this.intensityDataToDb(255 * (0 / 8)))}`,
-          },
-          {
-            value: 255 * (1 / 8),
-            color: ColorHEX('#000fff'),
-            label: '', // `${Math.round(this.intensityDataToDb(255 * (1 / 8)))}`,
-          },
-          {
-            value: 255 * (2 / 8),
-            color: ColorHEX('#0090ff'),
-            label: `${Math.round(this.intensityDataToDb(255 * (2 / 8)))}`,
-          },
-          {
-            value: 255 * (3 / 8),
-            color: ColorHEX('#0fffee'),
-            label: '', // `${Math.round(this.intensityDataToDb(255 * (3 / 8)))}`,
-          },
-          {
-            value: 255 * (4 / 8),
-            color: ColorHEX('#90ff70'),
-            label: `${Math.round(this.intensityDataToDb(255 * (4 / 8)))}`,
-          },
-          {
-            value: 255 * (5 / 8),
-            color: ColorHEX('#ffee00'),
-            label: '', // `${Math.round(this.intensityDataToDb(255 * (5 / 8)))}`,
-          },
-          {
-            value: 255 * (6 / 8),
-            color: ColorHEX('#ff7000'),
-            label: `${Math.round(this.intensityDataToDb(255 * (6 / 8)))}`,
-          },
-          {
-            value: 255 * (7 / 8),
-            color: ColorHEX('#ee0000'),
-            label: '', // `${Math.round(this.intensityDataToDb(255 * (7 / 8)))}`,
-          },
-          {
-            value: 255,
-            color: ColorHEX('#7f0000'),
-            label: `${Math.round(this.intensityDataToDb(255))}`,
-          },
-        ],
-        interpolate: true,
+        steps,
+        interpolate: false,
       });
     },
   },
   watch: {
+    spectrogram() {
+      this.addDataToChart();
+      this.currentTimeLine.setValue(this.currentTime);
+    },
     selectedTime() {
       // this.setSelectedTime();
       this.selectedTimeLine.setValue(this.selectedTime);
-    },
-    index() {
-      if (this.index < 0) return; // selected time before spectrogram start time
-      // this.createChart();
-      this.addDataToChart();
-      // this.setCurrentTime();
-      this.currentTimeLine.setValue(this.currentTime);
     },
     currentTime() {
       // this.setCurrentTime();
@@ -174,6 +126,7 @@ export default {
   beforeUnmount() {
     // "dispose" should be called when the component is unmounted to free all the resources used by the chart
     this.chart.dispose();
+    this.chart = undefined;
   },
   methods: {
     // Define function that maps Uint8 [0, 255] to Decibels.
@@ -187,7 +140,10 @@ export default {
       return minDecibels + (intensity / 255) * (maxDecibels - minDecibels);
     },
     createChart() {
-      if (this.chart) this.chart.dispose();
+      if (this.chart) {
+        this.chart.dispose();
+        this.chart = undefined;
+      }
       console.log('create chart');
       // Create chartXY
       // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/chartxy.html
@@ -237,6 +193,10 @@ export default {
       }
       // Add a Heatmap to the Chart.
       console.log('add data');
+      if (this.dataSeries) {
+        this.dataSeries.dispose();
+        this.dataSeries = undefined;
+      }
       this.dataSeries = this.chart
         .addHeatmapGridSeries({
           columns: ylen,
@@ -248,7 +208,7 @@ export default {
         })
         .setName('Power/Frequency(dB/Hz)')
         // Color Heatmap using previously created color look up table.
-        .setFillStyle(new PalettedFill({ lut: this.palette }))
+        .setFillStyle(new PalettedFill({ lut: this.turbo }))
         .setWireframeStyle(emptyLine)
         // Use look up table (LUT) to get heatmap intensity value coloring
         .setMouseInteractions(false);
@@ -272,45 +232,68 @@ export default {
           );
         console.log('spectrogram added');
       }
+      this.chart.getDefaultAxisX().fit();
+      this.chart.getDefaultAxisY().fit();
+
+      // setup click listener
+      const startTime = this.spectrogram.startTime;
+      this.chart.offSeriesBackgroundMouseUp();
+      this.chart.onSeriesBackgroundMouseUp((_, event) => {
+        // Translate mouse location to Axis coordinate system.
+        const curLocationAxis = translatePoint(
+          this.chart.engine.clientLocation2Engine(event.clientX, event.clientY),
+          this.chart.engine.scale,
+          this.dataSeries.scale
+        );
+        this.$emit('update:selected-time', curLocationAxis.x - startTime);
+        console.log(startTime);
+        console.log(curLocationAxis.x - startTime);
+      });
     },
     setSelectedTime() {
       // Add a Constantline to the X Axis
       if (this.selectedTimeLine) {
         this.selectedTimeLine.dispose();
+        this.selectedTimeLine = undefined;
       }
       this.selectedTimeLine = this.xAxis.addConstantLine();
       // Position the Constantline in the Axis Scale
       this.selectedTimeLine.setValue(this.selectedTime);
       // The name of the Constantline will be shown in the LegendBox
-      this.selectedTimeLine.setName('Selected Time');
-      // TODO: change color
-      // emit drag time and set audio time or turn off drag
-
-      // if (this.selectedTimeLine) this.selectedTimeLine.dispose();
-      // this.selectedTimeLine = this.chart
-      //   .addLineSeries()
-      //   .setStrokeStyle(
-      //     (style) =>
-      //       style
-      //         .setThickness(10)
-      //         .setFillStyle(new SolidFill({ color: ColorHEX('#000000') })) // black
-      //   )
-      //   .setName('Selected Time')
-      //   .add([
-      //     { x: this.selectedTime, y: 0 },
-      //     { x: this.selectedTime, y: 64000 },
-      //   ]);
+      this.selectedTimeLine
+        .setName('Selected Time')
+        .setStrokeStyle(
+          new SolidLine({
+            thickness: 2,
+            fillStyle: new SolidFill({
+              color: ColorHEX('#FF00FF'), // magenta
+            }),
+          })
+        )
+        .setMouseInteractions(false);
+      // TODO:emit drag time and set audio time or turn off drag
     },
     setCurrentTime() {
       // Add a Constantline to the X Axis
       if (this.currentTimeLine) {
         this.currentTimeLine.dispose();
+        this.currentTimeLine = undefined;
       }
       this.currentTimeLine = this.xAxis.addConstantLine();
       // Position the Constantline in the Axis Scale
       this.currentTimeLine.setValue(this.currentTime);
       // The name of the Constantline will be shown in the LegendBox
-      this.currentTimeLine.setName('Audio Time');
+      this.currentTimeLine
+        .setName('Audio Time')
+        .setStrokeStyle(
+          new SolidLine({
+            thickness: 2,
+            fillStyle: new SolidFill({
+              color: ColorHEX('#000000'), // black
+            }),
+          })
+        )
+        .setMouseInteractions(false);
       // TODO: change color
       // emit drag time and set audio time or turn off drag
 

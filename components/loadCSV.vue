@@ -2,8 +2,8 @@
   <!-- File List -->
   <div class="file-holder">
     <label>
-      <span v-if="singleFile">{{ fileType }} File:</span>
-      <span v-else>{{ fileType }} Files:</span>
+      You can load a csv file of timestamps associated with the audio files. If
+      no file is loaded, the timestamps will default to the file name.
       <!-- Add Files -->
       <v-btn
         v-if="!hideButtons"
@@ -13,20 +13,9 @@
         @click="openFileExplorer()"
       >
         <v-icon color="primary">mdi-folder-upload-outline</v-icon>
-        <span v-if="singleFile"
-          >Drag file here to import or click to open file explorer.
-        </span>
-        <span v-else>
-          Drag one or more files here to import or click to open file explorer.
-        </span>
+        Drag CSV file here to import or click to open file explorer.
       </v-btn>
-      <input
-        id="files"
-        ref="files"
-        type="file"
-        :multiple="!singleFile"
-        @change="handleFilesUpload()"
-      />
+      <input id="files" ref="files" type="file" @change="handleFilesUpload()" />
     </label>
     <div>
       <div v-for="(file, key) in innerFiles" :key="key">
@@ -73,17 +62,12 @@ export default {
       type: Number,
       default: 0,
     },
-    singleFile: {
-      type: Boolean,
-      default: false,
-    },
   },
   data() {
     return {
       innerFiles: [],
     };
   },
-
   methods: {
     /**
      * Open file explorer to add files
@@ -91,22 +75,29 @@ export default {
     openFileExplorer() {
       this.$refs.files.click();
     },
+
     /**
      * Add files to app
      */
     addFiles(files) {
-      for (let i = 0; i < files.length; i++) {
-        this.innerFiles.push(files[i]);
-      }
-      this.innerFiles.sort((a, b) => {
-        if (a.name < b.name) {
-          return -1;
-        } else if (a.name > b.name) {
-          return 1;
-        } else return 0;
-      });
-      // TODO: remove duplicate files
-      this.$emit('update:files', this.innerFiles);
+      const reader = new FileReader();
+      const self = this;
+      reader.onload = function (e) {
+        const str = e.target.result;
+        // removes the text header from the first line if there is one
+        // slice from \n index + 1 to the end of the text
+        // use split to create an array of each csv value row
+        const rows = str.split('\n');
+        const rows2 = rows.map((v) => {
+          // remove the \r at the end of each number and make it an integer
+          return parseInt(v.slice(0, v.indexOf('\r')));
+        });
+        if (isNaN(rows2[0])) rows2.shift();
+        // return the contents of the file
+        self.$emit('update:files', rows2);
+      };
+      this.innerFiles = files;
+      reader.readAsText(files[0]);
     },
     /**
      * Removes a select file the user has uploaded
@@ -114,26 +105,21 @@ export default {
     removeFile(key) {
       this.innerFiles.splice(key, 1);
       this.$emit('update:files', this.innerFiles);
-      this.$emit('index-removed', key);
       if (this.fileSelected === key) {
-        // if removing current selection, select previous file
-        if (this.innerFiles.length === 0 || this.fileSelected > 0) {
-          this.select(this.fileSelected - 1);
-        }
-        // unless there is only one file left in the list, the index will still be 0
+        this.select(this.fileSelected);
+        // TODO: This won't trigger a replot when fileSelected===0 because fileSelected isn't changing
       }
     },
     /**
      * Select a file with the Select button
      */
     select(key) {
-      this.$emit('update:file-selected', key);
+      this.$emit('update:fileSelected', key);
     },
     /**
      * Handles the uploading of files
      */
     handleFilesUpload() {
-      // TODO: does not get triggered if you remove and add same file
       const uploadedFiles = this.$refs.files.files;
       // Adds the uploaded file to the files array
       const files = [];
@@ -149,6 +135,7 @@ export default {
      */
     checkFileType(newFile) {
       if (!this.allowedExtensions.exec(newFile.name)) {
+        console.log(newFile.name);
         alert('Invalid file type');
         return false;
       } else {
@@ -195,13 +182,10 @@ export default {
 
 <style scoped>
 .file-holder {
-  height: 30vh;
-  max-height: 30vh;
-  overflow-y: scroll;
+  height: 20vh;
 }
 #drop_zone {
   border: 5px solid #00dc82;
-  width: 95%;
   height: 60px;
 }
 </style>
