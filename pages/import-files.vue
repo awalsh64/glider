@@ -126,20 +126,37 @@
               <v-card>
                 <v-card-title class="text-h5"> FFT Parameters </v-card-title>
                 <v-card-text>
-                  <v-combobox
-                    v-model="nfftSelected"
-                    :items="nfftOptions"
-                    label="NFFT"
-                    outlined
-                    dense
-                  ></v-combobox>
-                  <v-combobox
-                    v-model="processorBufferSizeInput"
-                    :items="nfftOptions"
-                    label="Processor Buffer Size"
-                    outlined
-                    dense
-                  ></v-combobox>
+                  <v-tooltip bottom>
+                    <template #activator="{ on, attrs }">
+                      <v-combobox
+                        v-model="nfftSelected"
+                        :items="nfftOptions"
+                        label="NFFT"
+                        outlined
+                        dense
+                        v-bind="attrs"
+                        v-on="on"
+                      ></v-combobox>
+                    </template>
+                    <span>Increase NFFT to increase frequency resolution.</span>
+                  </v-tooltip>
+                  <v-tooltip bottom>
+                    <template #activator="{ on, attrs }">
+                      <v-combobox
+                        v-model="processorBufferSizeInput"
+                        :items="nfftOptions"
+                        label="Processor Buffer Size"
+                        outlined
+                        dense
+                        v-bind="attrs"
+                        v-on="on"
+                      ></v-combobox>
+                    </template>
+                    <span
+                      >Decrease Processor Buffer Size to increase time
+                      resolution.</span
+                    >
+                  </v-tooltip>
                   <v-text-field
                     v-model="sampleRateInput"
                     label="Sample Rate (Hz)"
@@ -396,9 +413,9 @@ export default {
       dialog2: false,
       dialog3: false,
       nfftOptions: [256, 512, 1024, 2048, 4096, 8192, 16384],
-      nfftSelected: 1024, // TODO:2048
+      nfftSelected: 2048,
       processorBufferSizeInput: 1024,
-      sampleRateInput: 32000, // TODO:128000,
+      sampleRateInput: 48000,
       minDecibelInput: -160,
       maxDecibelInput: -60,
       rules: {
