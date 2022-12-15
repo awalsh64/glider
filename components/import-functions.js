@@ -46,9 +46,12 @@ export function unixToTime(unix) {
   const hours = date.getHours();
   const minutes = date.getMinutes();
   const secs = date.getSeconds();
-  const startTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
+  const timezone = date.getTimezoneOffset();
+  const startTime =
+    hours * 3600000 + (minutes + timezone) * 60000 + secs * 1000; // milliseconds
+  const date2 = new Date(unix * 1000 + timezone * 60 * 1000);
   if (isNaN(startTime)) return 0;
-  return startTime;
+  return { startTime, startDate: date2 };
 }
 
 /*

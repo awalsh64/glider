@@ -45,12 +45,16 @@ export default {
       type: Array,
     },
     // time of first file in GMT to offset start of data time to correct date
+    // startDate = new Date(startTime + timezone * 60 * 1000);
+    // where startTime is the unix timestamp in milliseconds and timezone is the offset from GMT in minutes
     startDate: {
       required: true,
       type: Date,
     },
-    // array of spectrogram data {startTime (milliseconds since 1970-1-1 00:00:00), duration}
-    spectrograms: {
+    // array of spectrogram start dates
+    // startDate = new Date(startTime + timezone * 60 * 1000);
+    // where startTime is the unix timestamp in milliseconds and timezone is the offset from GMT in minutes
+    spectrogramTimes: {
       type: Array,
       default: () => {
         return [];
@@ -101,7 +105,7 @@ export default {
       // add legend
       this.addLegend();
     },
-    spectrograms() {
+    spectrogramTimes() {
       this.addTimeMarkers();
     },
     currentTime() {
@@ -249,7 +253,6 @@ export default {
         .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
           tickStrategy.setDateOrigin(this.startDate)
         ); // expects time in milliseconds
-
       this.chart2
         .getDefaultAxisX()
         .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
@@ -589,26 +592,40 @@ export default {
         }
         this.spectroTimeMarker = [];
       }
-      for (let i = 0; i < this.spectrograms.length; i++) {
-        const x = this.spectrograms[i].startDate - this.startDate;
-        const x2 = x + this.spectrograms[i].duration * 1000;
+      for (let i = 0; i < this.spectrogramTimes.length; i++) {
+        const x = this.spectrogramTimes[i].startDate - this.startDate;
         // Add a transparent band to the X Axis
-        this.spectroTimeMarker[i] = this.chart.getDefaultAxisX().addBand();
-        // Position the band in the Axis Scale
-        this.spectroTimeMarker[i].setValueStart(x);
-        this.spectroTimeMarker[i].setValueEnd(x2);
-        // The name of the band will be shown in the LegendBox
-        this.spectroTimeMarker[i].setName('Acoustic Time');
-        this.spectroTimeMarker[i].setMouseInteractions(false);
+        this.spectroTimeMarker[i] = this.chart
+          .getDefaultAxisX()
+          .addConstantLine()
+          // Position the band in the Axis Scale
+          .setValue(x)
+          .setName('Acoustic Time')
+          .setMouseInteractions(false)
+          .setStrokeStyle(
+            new SolidLine({
+              thickness: 2,
+              fillStyle: new SolidFill({
+                color: ColorHEX('#00FFFF'), // cyan
+              }),
+            })
+          );
 
         // add bands to temp salinity chart
-        this.spectroTimeMarker[i + this.spectrograms.length] = this.chart2
+        this.spectroTimeMarker[i + this.spectrogramTimes.length] = this.chart2
           .getDefaultAxisX()
-          .addBand()
-          .setValueStart(x)
-          .setValueEnd(x2)
-          .setName('Start Time')
-          .setMouseInteractions(false);
+          .addConstantLine()
+          .setValue(x)
+          .setName('Acoustic Time')
+          .setMouseInteractions(false)
+          .setStrokeStyle(
+            new SolidLine({
+              thickness: 2,
+              fillStyle: new SolidFill({
+                color: ColorHEX('#00FFFF'), // cyan
+              }),
+            })
+          );
       }
     },
     /**

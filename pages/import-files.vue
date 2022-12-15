@@ -114,7 +114,7 @@
           />
           <div>
             <!-- Submit -->
-            <v-btn v-if="!loading" color="primary" @click="submitAudioFiles()"
+            <v-btn v-if="!loading" color="primary" @click="submitAudioFiles"
               >Process Files</v-btn
             >
             <v-dialog v-if="!loading" v-model="dialog" width="500">
@@ -239,7 +239,7 @@
         :points="gliderDepth"
         :points2="tempSalData"
         :start-date="startDate"
-        :spectrograms="spectrogramData"
+        :spectrogram-times="spectrogramTimes"
         :hide-temp="hideTemp"
         :hide-trajectory="hideTrajectory"
         @date="selectedDate = $event"
@@ -255,10 +255,16 @@
     </div>
 
     <!-- Spectrogram -->
-    <div v-if="!hideSpec" class="big-plot">
+    <div
+      v-if="!hideSpec"
+      :class="{
+        'big-plot': hideTrajectory && hideTemp,
+        'small-plot': !hideTrajectory || !hideTemp,
+      }"
+    >
       <heatmap
         :selected-time.sync="selectedTime"
-        :spectrogram="spectrogramData[fileSelected]"
+        :spectrogram="spectrogramData"
         :min-decibel="Number(minDecibelInput)"
         :max-decibel="Number(maxDecibelInput)"
         :current-time="currentTime"
@@ -446,7 +452,8 @@ export default {
       temperatureIndex: 4,
       salinityIndex: 5,
       speedIndex: 6,
-      spectrogramData: [],
+      spectrogramData: {},
+      spectrogramTimes: [],
       audioFiles: [],
       ncFiles: [],
       ncData: [],
@@ -475,9 +482,6 @@ export default {
     };
   },
   computed: {
-    numAudioFiles() {
-      return this.audioFiles.length;
-    },
     config() {
       return {
         /**
@@ -510,14 +514,11 @@ export default {
     },
   },
   watch: {
-    numAudioFiles() {
-      if (this.fileSelected <= 0) {
-        // last file was removed, trigger reload because fileSelected index didn't change
-        this.loadSelectedAudioFile();
-      }
-    },
     fileSelected() {
+      // load audio files when new file is selected or when Process Files is clicked
       if (this.fileSelected >= 0) {
+        // numLoaded watcher will trigger loadSelectedAudioFile
+        this.submitAudioFiles();
         this.loadSelectedAudioFile();
       }
     },
@@ -526,13 +527,13 @@ export default {
     },
     selectedDate(date) {
       // return if no spectrograms created
-      if (this.spectrogramData.length === 0) return;
-      // find spectrogramData.startTime that starts closest to selectedDate
+      if (this.spectrogramTimes.length === 0) return;
+      // find spectrogramTimes.startTime that starts closest to selectedDate
       const hours = date.getHours();
       const minutes = date.getMinutes();
       const secs = date.getSeconds();
       this.selectedTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
-      const index = this.spectrogramData.findIndex((data) => {
+      const index = this.spectrogramTimes.findIndex((data) => {
         // find index of the spectrogram after selected time
         // return this.selectedTime < data.startTime;
         return date < data.startDate;
@@ -542,37 +543,36 @@ export default {
       // TODO: click outside of time coverage shouldn't select spectrogram
       if (index < 0) {
         // last spectrogram
-        newIndex = this.spectrogramData.length - 1;
-        if (
-          date >
-          this.spectrogramData[newIndex].startDate +
-            this.spectrogramData[newIndex].duration * 1000
-        ) {
-          // selected time is beyond last spectrogram duration
-          newIndex = -1;
-        }
-      } else if (
-        date >
-        this.spectrogramData[newIndex].startDate +
-          this.spectrogramData[newIndex].duration * 1000
-      ) {
-        // beyond duration of spectrogram
-        newIndex = -1;
+        newIndex = this.spectrogramTimes.length - 1;
+        //   if (
+        //     date >
+        //     this.spectrogramTimes[newIndex].startDate +
+        //       this.spectrogramTimes[newIndex].duration * 1000
+        //   ) {
+        //     // selected time is beyond last spectrogram duration
+        //     newIndex = -1;
+        //   }
+        // } else if (
+        //   date >
+        //   this.spectrogramTimes[newIndex].startDate +
+        //     this.spectrogramTimes[newIndex].duration * 1000
+        // ) {
+        //   // beyond duration of spectrogram
+        //   newIndex = -1;
       }
       if (this.fileSelected !== newIndex) {
         // set new spectrogram if it is not the current selection
         this.fileSelected = newIndex;
         if (this.fileSelected >= 0) {
           // reset play time
-          this.currentTime = 0; // this.spectrogramData[this.fileSelected].startTime;
+          this.currentTime = 0;
         }
       }
-      console.log('index', this.fileSelected);
     },
   },
   methods: {
     removeAudio(index) {
-      this.spectrogramData.splice(index, 1);
+      this.spectrogramTimes.splice(index, 1);
       this.numLoaded--;
     },
     /**
@@ -588,15 +588,14 @@ export default {
       }
       this.audioSrc = URL.createObjectURL(this.audioFiles[this.fileSelected]);
       this.sound.load();
-      this.currentTime = this.spectrogramData[this.fileSelected].startTime;
+
       const sound = this.sound;
       this.sound.addEventListener(
         'timeupdate',
         () => {
           if (this.fileSelected < 0) return;
           this.currentTime =
-            sound.currentTime * 1000 +
-            this.spectrogramData[this.fileSelected].startTime;
+            sound.currentTime * 1000 + this.spectrogramData.startTime;
         },
         false
       );
@@ -605,8 +604,7 @@ export default {
       // const source = audioCtx.createMediaElementSource(sound);
     },
     loadTimestamp() {
-      this.spectrogramData = [];
-      this.fileSelected = -1;
+      this.spectrogramTimes = [];
       this.dialog2 = false;
     },
     async loadBathy() {
@@ -738,7 +736,8 @@ export default {
       this.gliderDepth = this.gliderDepth.concat(depthData);
       this.tempSalData = this.tempSalData.concat(tempSalData);
       this.latLonData = this.latLonData.concat(latLonData);
-      this.startDate = new Date(startTime);
+      const timezone = new Date(startTime).getTimezoneOffset();
+      this.startDate = new Date(startTime + timezone * 60 * 1000);
       this.maxDepth = maxDepth;
       this.ncFileSelected = this.ncFiles.length - 1;
       this.numNCLoaded = this.ncFiles.length;
@@ -775,34 +774,42 @@ export default {
       if (this.currentConfig !== this.config) {
         // reprocess spectrograms
         this.currentConfig = this.config;
-        this.spectrogramData = [];
-        this.fileSelected = -1;
       }
-      const data = [];
-      for (
-        let i = this.spectrogramData.length;
-        i < this.audioFiles.length;
-        i++
-      ) {
-        // Documentation: https://zellwk.com/blog/async-await-in-loops/
-        // wait for async function
-        const file = this.audioFiles[i];
-        console.log('load ', i);
-        await loadAudioData(file, this.currentConfig).then((v) => {
-          if (this.csvFiles.length > 0) {
-            v.startTime = unixToTime(this.csvFiles[i]);
-            v.startDate = new Date(this.csvFiles[i] * 1000);
-          } else {
-            const times = getStartTimeFromFilename(file.name);
-            v.startTime = times.startTime;
-            v.startDate = times.startDate;
-          }
 
-          data.push(v);
-        });
+      // get audio file names
+      this.spectrogramTimes = [];
+      for (let i = 0; i < this.audioFiles.length; i++) {
+        const fileData = {};
+        const file = this.audioFiles[i];
+        if (this.csvFiles.length > 0) {
+          fileData.startTime = unixToTime(this.csvFiles[i]).startTime;
+          fileData.startDate = unixToTime(this.csvFiles[i]).startDate;
+        } else {
+          const times = getStartTimeFromFilename(file.name);
+          fileData.startTime = times.startTime;
+          fileData.startDate = times.startDate;
+        }
+        this.spectrogramTimes.push(fileData);
       }
-      this.fileSelected = this.audioFiles.length - 1;
-      this.spectrogramData = this.spectrogramData.concat(data);
+
+      let data = {};
+      const loadFileNum = this.fileSelected < 0 ? 0 : this.fileSelected;
+      // Documentation: https://zellwk.com/blog/async-await-in-loops/
+      // wait for async function
+      const file = this.audioFiles[loadFileNum];
+      console.log('load ', loadFileNum);
+      await loadAudioData(file, this.currentConfig).then((v) => {
+        data = v;
+      });
+      // }
+      data.startTime = this.spectrogramTimes[loadFileNum].startTime;
+      data.startDate = this.spectrogramTimes[loadFileNum].startDate;
+      this.currentTime = data.startTime;
+      if (this.fileSelected !== loadFileNum) {
+        this.fileSelected = loadFileNum;
+        this.loadSelectedAudioFile();
+      }
+      this.spectrogramData = data;
       this.numLoaded = this.audioFiles.length;
       this.loading = false;
     },
