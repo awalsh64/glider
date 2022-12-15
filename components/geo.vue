@@ -239,7 +239,7 @@ export default {
             end: this.bathyEnd,
             dataOrder: 'rows',
           })
-          .setName('Bathymetry (ft)')
+          .setName('Depth')
           // Color Heatmap using previously created color look up table.
           .setFillStyle(new PalettedFill({ lut: this.turbo }))
           .invalidateIntensityValues(this.bathyHeatmapPoints)
@@ -272,7 +272,7 @@ export default {
       this.pointsSeries = this.chart
         .addPointSeries({ pointShape: PointShape.Circle })
         .setPointSize(5)
-        .setName('Glider Depth')
+        .setName('Depth')
         .setPointFillStyle(
           new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
         )
@@ -302,11 +302,12 @@ export default {
         this.legend.dispose();
         this.legend = undefined;
       }
-      if (this.bathyHeatmapPoints.length > 0 || this.points.length > 0) {
-        this.legend = this.chart
-          .addLegendBox()
-          .add(this.chart)
-          .setPosition({ x: 100, y: 50 });
+      if (this.bathyPointsSeries) {
+        this.legend = this.chart.addLegendBox().setPosition({ x: 100, y: 50 });
+        this.legend.add(this.bathyPointsSeries);
+      } else if (this.pointsSeries) {
+        this.legend = this.chart.addLegendBox().setPosition({ x: 100, y: 50 });
+        this.legend.add(this.pointsSeries);
       }
     },
     setDrag() {

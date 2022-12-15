@@ -28,6 +28,7 @@ import {
   UIElementBuilders,
   PalettedFill,
   LUT,
+  ColorRGBA,
 } from '@arction/lcjs';
 import getTurboSteps from '@/components/turbo.js';
 
@@ -84,6 +85,8 @@ export default {
       chartId: null,
       selectedTime: null,
       spectroTimeMarker: [],
+      lineSeries1: undefined,
+      lineSeries2: undefined,
       xAxis: null,
       timeSelectedLine: null,
       timeSelectedLine2: null,
@@ -101,12 +104,12 @@ export default {
       this.addTimeMarkers();
       // add cursors
       if (this.lineSeries1) this.addCustomCursor();
-
       // add legend
       this.addLegend();
     },
     spectrogramTimes() {
       this.addTimeMarkers();
+      this.addLegend();
     },
     currentTime() {
       const currentDate = this.currentTime - this.startDate.getTime();
@@ -320,11 +323,12 @@ export default {
         this.legend = undefined;
       }
 
-      if (this.points.length > 0) {
-        this.legend = this.chart
-          .addLegendBox()
-          .add(this.chart)
-          .setPosition({ x: 100, y: 50 });
+      if (this.lineSeries1) {
+        this.legend = this.chart.addLegendBox().setPosition({ x: 100, y: 50 });
+        this.legend.add(this.lineSeries1);
+      }
+      if (this.spectroTimeMarker.length > 0) {
+        this.legend.add(this.spectroTimeMarker[0]);
       }
     },
     setDrag() {
@@ -606,7 +610,7 @@ export default {
             new SolidLine({
               thickness: 2,
               fillStyle: new SolidFill({
-                color: ColorHEX('#00FFFF'), // cyan
+                color: ColorRGBA(0, 255, 255, 150), // cyan
               }),
             })
           );
@@ -622,7 +626,7 @@ export default {
             new SolidLine({
               thickness: 2,
               fillStyle: new SolidFill({
-                color: ColorHEX('#00FFFF'), // cyan
+                color: ColorRGBA(0, 255, 255, 150), // cyan
               }),
             })
           );
