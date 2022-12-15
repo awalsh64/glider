@@ -7,12 +7,6 @@
 </template>
 
 <script>
-// TODO: add bars for start and end time of spectrograms https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-0701-bandsConstantlines.html
-// TODO-DONE: Disable click when zooming(mousedrag) when no spectrogram (crashes)
-// TODO-DONE: Dashboard for trajectory and temp/sal https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0704-customCursorStackedY.html?theme=lightNew&page-theme=light
-// add click to temp sal
-// TODO-DONE: Disable click when zooming(mousedrag)
-
 import {
   lightningChart,
   SolidFill,
@@ -99,7 +93,7 @@ export default {
       this.createChart();
       // add points to charts
       this.addLinesToCharts();
-      // add bars for spectrogram time coverage
+      // add line for spectrogram times
       this.addTimeMarkers();
       // add cursors
       if (this.lineSeries1) this.addCustomCursor();
@@ -130,7 +124,7 @@ export default {
     // the chart needs the element with specified containerId to exist in the DOM
     this.createChart();
 
-    // add bars for spectrogram time coverage
+    // add line for spectrogram times
     this.addTimeMarkers();
 
     // add points to charts
@@ -164,8 +158,6 @@ export default {
       });
     },
     createChart() {
-      console.log('create trajectory plot');
-
       if (this.chart) {
         this.chart.dispose();
         this.chart = undefined;
@@ -307,8 +299,6 @@ export default {
             y: v.z,
           }))
         );
-
-      console.log('points added');
     },
     /**
      * add lines to legend

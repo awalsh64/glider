@@ -1,6 +1,9 @@
 # glider
-## Amanda Walsh 9/5/2022
+
+## Amanda Walsh 12/15/2022
+
 # This app is deployed to:
+
 https://awalsh64.github.io/glider/
 
 ## Build Setup
@@ -25,6 +28,7 @@ $ npm run deploy
 ```
 
 ## This project was created using NuxtJS
+
 https://nuxtjs.org/docs/get-started/installation
 
 For detailed explanation on how things work, check out the [documentation](https://nuxtjs.org).

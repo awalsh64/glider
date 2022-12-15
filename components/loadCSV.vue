@@ -138,7 +138,6 @@ export default {
      */
     checkFileType(newFile) {
       if (!this.allowedExtensions.exec(newFile.name)) {
-        console.log(newFile.name);
         alert('Invalid file type');
         return false;
       } else {

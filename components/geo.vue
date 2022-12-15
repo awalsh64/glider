@@ -6,9 +6,6 @@
 </template>
 
 <script>
-// TODO: zoom to full view when click button https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-1111-covidDrillDownDashboard.html?theme=lightNew&page-theme=light
-// dispose data when new data loaded
-// change bathy to heatmap?
 import {
   lightningChart,
   PointShape,
@@ -119,8 +116,6 @@ export default {
       });
     },
     createChart() {
-      console.log('create geo');
-
       // create map
       this.mapChart = lightningChart()
         .Map({
@@ -149,15 +144,6 @@ export default {
         .setAnimationsEnabled(false)
         .setMouseInteractionWheelZoom(false);
       this.chart.engine.setBackgroundFillStyle(transparentFill);
-
-      // Hide axes
-      // this.chart
-      //   .getDefaultAxes()
-      //   .forEach((axis) =>
-      //     axis
-      //       .setTickStrategy(AxisTickStrategies.Empty)
-      //       .setStrokeStyle(emptyLine)
-      //   );
 
       // Synchronize ChartXY with MapChart view.
       this.mapChart.onViewChange((view) => {

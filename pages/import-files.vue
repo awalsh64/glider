@@ -312,76 +312,6 @@
 </template>
 
 <script>
-/**
- * TODO:
- * fix glider plot zoom out
- * modal for loading
- * fix loading and removing netcdfs
- * add dive number to tooltips
- * check build for images
- * DONE-get correct colormap
- * DONE-determine this.minDecibels,this.maxDecibels, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/maxDecibels
- * DONE-drag and drop files
- * DONE-add audio player to data viewer
- * DONE-hide select button before processed
- * DONE-duration should be different units than seconds so you don't have to figure out minutes
- * DONE-button control on netcdf file loader
- * DONE-reorder files by number/time
- * DONE-Try with single component, v-if, no store
- * DONE-test on mp3 file
- * DONE-GMT time
- * DONE-temperature and salinity profile
- * DONE - time scrolling line with audio player
- * DONE- import bathymetry
- * DONE-get new improved colormap > jet Turbo
- * DONE-depth vs. ctd_depth - change depthData variable index - depth_ctd is better!!!
- * DONE-overlays - bathy, sea surface temp, chlorophyl (how to import, file type)
- * NO-show all spectrograms by scrolling down
- * NO-upgrade depreciated functions, documentation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
- * fix npm run build for path stuff	https://elpan.dev/en/deploy-nuxt-js-on-github-pages
- * DONE-Make spectrogram config parameters adjustable by user
- * NO-change getByteFrequencyData to getFloatFrequencyData if better precision needed, need to fix array remap
- * ask Mel where the whales are
- * Layout:
- * |map|profiles|
- * |spectrograms|
- * change netCDF variables to object to avoid wrong indexing, handle missing variables
- * DONE-handle missing netCDF variables
- * DONE-make heatmap range (decibel range) user prop
- * DONE-what happens when you remove last file
- * DONE-Load audio start time from inputable look up table or read .cap file
- * DONE-highlight selected file
- * DONE-lat lon on a map
- * DONE-add parameters to change spectrogram - nfft, overlap, window type
- * DONE-rainbow line for sound speed on trajectory
- * crashes if click nc chart while loading audio files because change fileSelected
- * DONE-add watchers to FFT Parameters and button
- * add overlay loading indicator
- * TODO 11/17:try higher sample rate
- * click spectrogram to play time ???can you set time of audio player???
- * label dive number and show number and time in readout
- * network attached storage or google drive?
- * link geo to trajectory plot and spectrogram
- * collapse plots
- * DONE-add speed nc variable
- * standalone build-https://www.sitepoint.com/bundle-static-site-webpack/
- * overlap data
- * adding data in middle doesn't work (i.e. adding 5 when 4 and 6 are already loaded)
- * removing all files doesn't let you reload same file(s)
- * add input for processing buffer
- * remove NC files from plot data
- * add hide NC files
- * change audio start time line to shading (duration in seconds,convert to ms)
- * add audio time line to nc plots (when audio file is loaded second)
- * reprocess when timestamp loaded
- * //TODO: remove duplicate files in loadFiles addFiles
- * lightningchart too many active webgl contexts when reloading
- * fix timestamp import time posixtodate
- * mdi doesn't load offline
- * make trajectory line segments not connect, then you can remove individual segments for nc files instead of rereading all
- * use audio file date to check start time on correct day
- */
-
 // Spectrogram example documentation: https://lightningchart.com/lightningchart-js-interactive-examples/edit/lcjs-example-0802-spectrogram.html?theme=lightNew&page-theme=light
 // Web Audio Documentation: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-decodeaudiodata
 import Trajectory from '@/components/chartxy.vue';
@@ -540,25 +470,9 @@ export default {
       });
       // index-1 = spectrogram that starts before selected time
       let newIndex = index - 1;
-      // TODO: click outside of time coverage shouldn't select spectrogram
       if (index < 0) {
         // last spectrogram
         newIndex = this.spectrogramTimes.length - 1;
-        //   if (
-        //     date >
-        //     this.spectrogramTimes[newIndex].startDate +
-        //       this.spectrogramTimes[newIndex].duration * 1000
-        //   ) {
-        //     // selected time is beyond last spectrogram duration
-        //     newIndex = -1;
-        //   }
-        // } else if (
-        //   date >
-        //   this.spectrogramTimes[newIndex].startDate +
-        //     this.spectrogramTimes[newIndex].duration * 1000
-        // ) {
-        //   // beyond duration of spectrogram
-        //   newIndex = -1;
       }
       if (this.fileSelected !== newIndex) {
         // set new spectrogram if it is not the current selection
@@ -599,9 +513,6 @@ export default {
         },
         false
       );
-
-      // const audioCtx = new AudioContext();
-      // const source = audioCtx.createMediaElementSource(sound);
     },
     loadTimestamp() {
       this.spectrogramTimes = [];
@@ -609,7 +520,6 @@ export default {
     },
     async loadBathy() {
       if (this.bathyFiles.length > 0) {
-        console.log('load bathy');
         const file = URL.createObjectURL(this.bathyFiles[0]);
         let maxDepth = this.maxDepth;
         await getNetCDFVariables(file, [
@@ -660,7 +570,6 @@ export default {
       let maxDepth = this.maxDepth;
       // only read new files
       for (let i = this.gliderData.length; i < this.ncFiles.length; i++) {
-        console.log('load file ', i);
         const file = URL.createObjectURL(this.ncFiles[i]);
         await getNetCDFVariables(file, [
           'ctd_time', // unix timestamp - seconds since 1970-1-1 00:00:00
@@ -671,7 +580,6 @@ export default {
           'salinity_raw', // ppt
           'speed', // cm/s
         ]).then((v) => {
-          // TODO: change variables to object to avoid wrong indexing
           // Documentation: https://www.digitalocean.com/community/tutorials/understanding-date-and-time-in-javascript
           v[0] = v[0].map((time) => {
             return time * 1000; // convert seconds to milliseconds
@@ -731,7 +639,6 @@ export default {
           latLonData = latLonData.concat(latitudeLongitude);
         });
       }
-      console.log('all nc files read');
       this.gliderData = this.gliderData.concat(newData);
       this.gliderDepth = this.gliderDepth.concat(depthData);
       this.tempSalData = this.tempSalData.concat(tempSalData);
@@ -743,24 +650,6 @@ export default {
       this.numNCLoaded = this.ncFiles.length;
       this.loading = false;
     },
-
-    /**
-     * Get variable information for specific term
-     */
-    async selectVariable(index) {
-      // get all variables for variable list for selected nc file
-      // when variable is selected, get variable from name async from this.getVariales
-      // need to get variable name from a different way than getting the whole list and using the index
-      // await getNetCDFVariables(this.ncFileSelected, []).then((v) => {
-      //     this.variables = v;
-      //     const name = `${this.variables[index].name}`;
-      // this.selectedVariable = await getNetCDFVariables(this.ncFileSelected, [
-      //   name,
-      // ])[0].data;
-      // console.log(this.selectedVariable);
-      //   });
-    },
-
     /*
         Submits audioFiles to the server
       */
@@ -770,7 +659,6 @@ export default {
           to the form data.
         */
       this.loading = true;
-      // TODO: if lower file number is loaded after higher, the spectrogramData doesn't reset
       if (this.currentConfig !== this.config) {
         // reprocess spectrograms
         this.currentConfig = this.config;
@@ -797,7 +685,6 @@ export default {
       // Documentation: https://zellwk.com/blog/async-await-in-loops/
       // wait for async function
       const file = this.audioFiles[loadFileNum];
-      console.log('load ', loadFileNum);
       await loadAudioData(file, this.currentConfig).then((v) => {
         data = v;
       });

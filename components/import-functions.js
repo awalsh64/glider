@@ -1,7 +1,5 @@
 import { NetCDFReader } from 'netcdfjs';
 
-// TODO: window, overlap, nfft, https://www.npmjs.com/package/fft-windowing-ts
-
 /**
  * Return needed variables for trajectory path from NetCDF file
  * @param file loaded nc file
@@ -91,21 +89,17 @@ export function loadAudioData(file, config) {
 
   // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/decodeAudioData#examples
   // decode audio data loaded from an XMLHttpRequest
-  console.log('XML HTTP');
   return new Promise(function (resolve) {
     const request = new XMLHttpRequest();
     request.open('GET', myAudio, true);
     // Documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
     request.responseType = 'arraybuffer';
     request.onload = () => {
-      console.log('loaded');
       // wait for file to load using promise
       const audioData = request.response;
       audioCtx.decodeAudioData(audioData).then((decodedData) => {
         // use the decoded data here
-        console.log('decoded');
         resolve(processWaveform(decodedData, config));
-        console.log('processed');
       });
     };
     request.send();
@@ -118,7 +112,6 @@ export function loadAudioData(file, config) {
  * @returns {WaveFormData}                  Processed data
  */
 async function processWaveform(audioBuffer, config) {
-  console.log('process');
   // Create a new OfflineAudioContext with information from the pre-created audioBuffer
   // The OfflineAudioContext can be used to process a audio file as fast as possible.
   // Normal AudioContext would process the file at the speed of playback.
@@ -173,21 +166,12 @@ async function processWaveform(audioBuffer, config) {
   // Documentation https://developer.mozilla.org/en-US/docs/Web/API/ScriptProcessorNode/audioprocess_event
   processor.onaudioprocess = () => {
     // Run FFT for each channel
-    /// //////slow
     const freqData = new Uint8Array(
       channelFFtDataBuffer.buffer,
       offset,
       analyzer.frequencyBinCount
     );
     analyzer.getByteFrequencyData(freqData);
-    // TODO: change getByteFrequencyData to getFloatFrequencyData for better precision, need to fix remap
-    // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/getFloatFrequencyData
-    // const freqArrayData = new Float32Array(
-    //   channelFFtDataBuffer.buffer,
-    //   offset,
-    //   analyzer.frequencyBinCount
-    // );
-    // analyzer.getFloatFrequencyData(freqArrayData);
     offset += generalAnalyzer.frequencyBinCount;
   };
   // Connect source buffer to correct nodes,
@@ -211,7 +195,6 @@ async function processWaveform(audioBuffer, config) {
     duration: audioBuffer.duration,
   };
 
-  console.log('format');
   return formatSpectrogram(processed);
 }
 
@@ -233,16 +216,11 @@ export function remapDataToTwoDimensionalMatrix(data, strideSize, tickCount) {
   // [1, 4]
   // [2, 5]
   // [3, 6]
-  // const output = Array.from(Array(strideSize)).map(() =>
-  // Array.from(Array(tickCount))
-  // );
-  console.log('remap data');
   const output2 = Array(tickCount)
     .fill()
     .map((_, i) => {
       return data.slice(i * strideSize, i * strideSize + strideSize);
     });
-  console.log('done remapped');
   return output2;
 }
 /**
@@ -256,7 +234,6 @@ function formatSpectrogram(data) {
     data.stride,
     data.tickCount
   );
-  // DONE - TODO: duration should be different units than seconds so you don't have to round
   return {
     duration: Math.floor(data.duration),
     maxFreq: Math.ceil(data.maxFreq),
