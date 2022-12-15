@@ -96,8 +96,7 @@ export default {
   },
   watch: {
     points() {
-      // set start of axis to start of first point
-      this.setAxisOriginTime();
+      this.createChart();
       // add points to charts
       this.addLinesToCharts();
       // add bars for spectrogram time coverage
@@ -126,12 +125,10 @@ export default {
   },
 
   mounted() {
+    this.createColormap();
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM
     this.createChart();
-
-    // set start of axis to start of first point
-    this.setAxisOriginTime();
 
     // add bars for spectrogram time coverage
     this.addTimeMarkers();
@@ -169,7 +166,6 @@ export default {
     createChart() {
       console.log('create trajectory plot');
 
-      this.createColormap();
       if (this.chart) {
         this.chart.dispose();
         this.chart = undefined;
@@ -202,6 +198,13 @@ export default {
         .setMouseInteractionWheelZoom(false)
         .setPadding({ right: 100 });
 
+      this.chart
+        .getDefaultAxisX()
+        .setAnimationScroll(undefined)
+        .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
+          tickStrategy.setDateOrigin(this.startDate)
+        ); // expects time in milliseconds
+
       // setup axis
       this.chart
         .getDefaultAxisY()
@@ -224,6 +227,12 @@ export default {
         // Set chart title
         .setTitle('Temperature and Salinity')
         .setMouseInteractionWheelZoom(false);
+
+      this.chart2
+        .getDefaultAxisX()
+        .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
+          tickStrategy.setDateOrigin(this.startDate)
+        ); // expects time in milliseconds
 
       // setup axis
       this.tempAxis = this.chart2
@@ -248,19 +257,6 @@ export default {
 
       // Disable default auto cursor.
       this.chart2.setAutoCursorMode(AutoCursorModes.disabled);
-    },
-    setAxisOriginTime() {
-      this.chart
-        .getDefaultAxisX()
-        .setAnimationScroll(undefined)
-        .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
-          tickStrategy.setDateOrigin(this.startDate)
-        ); // expects time in milliseconds
-      this.chart2
-        .getDefaultAxisX()
-        .setTickStrategy(AxisTickStrategies.DateTime, (tickStrategy) =>
-          tickStrategy.setDateOrigin(this.startDate)
-        ); // expects time in milliseconds
     },
     addLinesToCharts() {
       // Add line series to the chart for glider trajectory
