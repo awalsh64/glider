@@ -1,7 +1,5 @@
 import { NetCDFReader } from 'netcdfjs';
 
-// TODO: window, overlap, nfft, https://www.npmjs.com/package/fft-windowing-ts
-
 /**
  * Return needed variables for trajectory path from NetCDF file
  * @param file loaded nc file
@@ -25,7 +23,11 @@ export function getNetCDFVariables(file, vars) {
         dataset = reader.variables;
       } else {
         for (let i = 0; i < vars.length; i++) {
-          dataset.push(reader.getDataVariable(vars[i]));
+          if (reader.dataVariableExists(vars[i])) {
+            dataset.push(reader.getDataVariable(vars[i]));
+          } else {
+            alert('Missing ' + vars[i] + ' variable!');
+          }
         }
       }
       resolve(dataset);
@@ -34,32 +36,43 @@ export function getNetCDFVariables(file, vars) {
   });
 }
 
-export function posixToDate(name) {
-  const hours = parseInt(name.substr(0, 2));
-  const minutes = name.substr(2, 2);
-  const secs = name.substr(4, 2);
-  console.log({ hours, minutes, secs });
-  const startTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
+/*
+ * unix time in seconds to start time in milliseconds
+ */
+export function unixToTime(unix) {
+  const date = new Date(unix * 1000);
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const secs = date.getSeconds();
+  const timezone = date.getTimezoneOffset();
+  const startTime =
+    hours * 3600000 + (minutes + timezone) * 60000 + secs * 1000; // milliseconds
+  const date2 = new Date(unix * 1000 + timezone * 60 * 1000);
   if (isNaN(startTime)) return 0;
-  return startTime;
+  return { startTime, startDate: date2 };
 }
 
+/*
+ * file name in format yymmdd_hhmmss.wav or .mp3
+ * return start time (hours+minutes+seconds) in milliseconds
+ * and start date (unix) in milliseconds
+ */
 export function getStartTimeFromFilename(name) {
-  let year = name.substr(15, 2);
+  let year = name.substr(name.length - 17, 2);
   year = '20'.concat(year);
   // months are from 0-11
-  const month = parseInt(name.substr(17, 2)) - 1;
+  const month = parseInt(name.substr(name.length - 15, 2)) - 1;
   // TODO: Double check that 9 = September?
-  const day = name.substr(19, 2);
+  const day = name.substr(name.length - 13, 2);
   // TODO: convert time to GMT (4 can't be hard coded)
-  const hours = parseInt(name.substr(22, 2));
-  const minutes = name.substr(24, 2);
-  const secs = name.substr(26, 2);
-  console.log({ hours, minutes, secs });
+  const hours = parseInt(name.substr(name.length - 10, 2));
+  const minutes = name.substr(name.length - 8, 2);
+  const secs = name.substr(name.length - 6, 2);
   // const date = new Date(year, month, day, hours, minutes, secs);
   const startTime = hours * 3600000 + minutes * 60000 + secs * 1000; // milliseconds
-  if (isNaN(startTime)) return 0;
-  return startTime;
+  const startDate = new Date(+year, month, +day, +hours, +minutes, +secs);
+  if (isNaN(startTime)) return { startTime: 0, startDate: 0 };
+  return { startTime, startDate };
 }
 
 /**
@@ -76,21 +89,17 @@ export function loadAudioData(file, config) {
 
   // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/decodeAudioData#examples
   // decode audio data loaded from an XMLHttpRequest
-  console.log('XML HTTP');
   return new Promise(function (resolve) {
     const request = new XMLHttpRequest();
     request.open('GET', myAudio, true);
     // Documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
     request.responseType = 'arraybuffer';
     request.onload = () => {
-      console.log('loaded');
       // wait for file to load using promise
       const audioData = request.response;
       audioCtx.decodeAudioData(audioData).then((decodedData) => {
         // use the decoded data here
-        console.log('decoded');
         resolve(processWaveform(decodedData, config));
-        console.log('processed');
       });
     };
     request.send();
@@ -103,7 +112,6 @@ export function loadAudioData(file, config) {
  * @returns {WaveFormData}                  Processed data
  */
 async function processWaveform(audioBuffer, config) {
-  console.log('process');
   // Create a new OfflineAudioContext with information from the pre-created audioBuffer
   // The OfflineAudioContext can be used to process a audio file as fast as possible.
   // Normal AudioContext would process the file at the speed of playback.
@@ -158,21 +166,12 @@ async function processWaveform(audioBuffer, config) {
   // Documentation https://developer.mozilla.org/en-US/docs/Web/API/ScriptProcessorNode/audioprocess_event
   processor.onaudioprocess = () => {
     // Run FFT for each channel
-    /// //////slow
     const freqData = new Uint8Array(
       channelFFtDataBuffer.buffer,
       offset,
       analyzer.frequencyBinCount
     );
     analyzer.getByteFrequencyData(freqData);
-    // TODO: change getByteFrequencyData to getFloatFrequencyData for better precision, need to fix remap
-    // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode/getFloatFrequencyData
-    // const freqArrayData = new Float32Array(
-    //   channelFFtDataBuffer.buffer,
-    //   offset,
-    //   analyzer.frequencyBinCount
-    // );
-    // analyzer.getFloatFrequencyData(freqArrayData);
     offset += generalAnalyzer.frequencyBinCount;
   };
   // Connect source buffer to correct nodes,
@@ -196,7 +195,6 @@ async function processWaveform(audioBuffer, config) {
     duration: audioBuffer.duration,
   };
 
-  console.log('format');
   return formatSpectrogram(processed);
 }
 
@@ -206,7 +204,7 @@ async function processWaveform(audioBuffer, config) {
  * @param {number}      strideSize  Single data block width
  * @param {number}      tickCount    Data row count
  */
-function remapDataToTwoDimensionalMatrix(data, strideSize, tickCount) {
+export function remapDataToTwoDimensionalMatrix(data, strideSize, tickCount) {
   /**
    * @type {Array<number>}
    */
@@ -218,23 +216,11 @@ function remapDataToTwoDimensionalMatrix(data, strideSize, tickCount) {
   // [1, 4]
   // [2, 5]
   // [3, 6]
-  // const output = Array.from(Array(strideSize)).map(() =>
-  // Array.from(Array(tickCount))
-  // );
-  console.log('remap data');
   const output2 = Array(tickCount)
     .fill()
     .map((_, i) => {
       return data.slice(i * strideSize, i * strideSize + strideSize);
     });
-  // const output = [];
-  // for (let row = 0; row < strideSize; row += 1) {
-  //   output[row] = [];
-  //   for (let col = 0; col < tickCount; col += 1) {
-  //     output[row][col] = data[col * strideSize + row];
-  //   }
-  // }
-  console.log('done remapped');
   return output2;
 }
 /**
@@ -248,7 +234,6 @@ function formatSpectrogram(data) {
     data.stride,
     data.tickCount
   );
-  // DONE - TODO: duration should be different units than seconds so you don't have to round
   return {
     duration: Math.floor(data.duration),
     maxFreq: Math.ceil(data.maxFreq),

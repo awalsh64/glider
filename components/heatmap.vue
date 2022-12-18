@@ -3,25 +3,6 @@
 </template>
 
 <script>
-// TODO-DONE: axis.addBand for current song playing location
-// Extract required parts from LightningChartJS.
-// Add instruction for manipulating plots
-// convert x axis from seconds to milliseconds for use with Time axis
-// DONE-fix legend
-// DONE-change x axis range on file load
-
-// plot interactions:
-// zoom in with left click drag left to right rectangle
-// reset zoom with left click drag rectangle right to left
-// zoom on axis selection
-// scroll on axis
-// adjust axis bounds at edge
-// pan with right click
-// move legend
-// You can also remove an axis from the panning interaction by calling axis.setChartInteractionPanByDrag(false).
-// time scrolling? https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-0013-timeTickStrategyScrolling.html
-// key in axis bounds?
-
 import {
   lightningChart,
   PalettedFill,
@@ -81,19 +62,12 @@ export default {
       dataSeries: undefined,
       xAxis: null,
       currentTimeLine: null,
+      turbo: {},
     };
   },
   computed: {
     startTime() {
       return this.spectrogram.startTime;
-    },
-    turbo() {
-      const steps = getTurboSteps(this.minDecibel, this.maxDecibel, 0, 255);
-      return new LUT({
-        units: 'dB',
-        steps,
-        interpolate: false,
-      });
     },
   },
   watch: {
@@ -102,12 +76,18 @@ export default {
       this.currentTimeLine.setValue(this.currentTime);
     },
     selectedTime() {
-      // this.setSelectedTime();
       this.selectedTimeLine.setValue(this.selectedTime);
     },
     currentTime() {
-      // this.setCurrentTime();
       this.currentTimeLine.setValue(this.currentTime);
+    },
+    minDecibel() {
+      this.createColormap();
+      this.createLegend();
+    },
+    maxDecibel() {
+      this.createColormap();
+      this.createLegend();
     },
   },
   beforeMount() {
@@ -118,6 +98,7 @@ export default {
     // Chart can only be created when the component has mounted the DOM because
     // the chart needs the element with specified containerId to exist in the DOM
     this.createChart();
+    this.createColormap();
     this.addDataToChart();
     this.setCurrentTime();
     this.setSelectedTime();
@@ -134,7 +115,6 @@ export default {
     intensityDataToDb(intensity) {
       const dataMinDecibel = this.minDecibel;
       const dataMaxDecibel = this.maxDecibel;
-      const gliderMaxSPL = 164.08; // dB re 1 μPa
       const minDecibels = dataMinDecibel; // + gliderMaxSPL;
       const maxDecibels = dataMaxDecibel; // + gliderMaxSPL;
       return minDecibels + (intensity / 255) * (maxDecibels - minDecibels);
@@ -144,7 +124,6 @@ export default {
         this.chart.dispose();
         this.chart = undefined;
       }
-      console.log('create chart');
       // Create chartXY
       // documentation: https://lightningchart.com/lightningchart-js-api-documentation/v3.1.0/classes/chartxy.html
       this.chart = lightningChart()
@@ -192,7 +171,6 @@ export default {
         }
       }
       // Add a Heatmap to the Chart.
-      console.log('add data');
       if (this.dataSeries) {
         this.dataSeries.dispose();
         this.dataSeries = undefined;
@@ -230,7 +208,6 @@ export default {
                 this.intensityDataToDb(dataPoint.intensity).toFixed(1) + ' dB'
               )
           );
-        console.log('spectrogram added');
       }
       this.chart.getDefaultAxisX().fit();
       this.chart.getDefaultAxisY().fit();
@@ -246,8 +223,6 @@ export default {
           this.dataSeries.scale
         );
         this.$emit('update:selected-time', curLocationAxis.x - startTime);
-        console.log(startTime);
-        console.log(curLocationAxis.x - startTime);
       });
     },
     setSelectedTime() {
@@ -271,7 +246,6 @@ export default {
           })
         )
         .setMouseInteractions(false);
-      // TODO:emit drag time and set audio time or turn off drag
     },
     setCurrentTime() {
       // Add a Constantline to the X Axis
@@ -294,20 +268,16 @@ export default {
           })
         )
         .setMouseInteractions(false);
-      // TODO: change color
-      // emit drag time and set audio time or turn off drag
-
-      // Add a Band to the X Axis
-      // const xAxisBand = this.xAxis.addBand();
-      // // Set the start and end values of the Band.
-      // xAxisBand
-      //   .setValueStart(55300000) // 55261699)
-      //   .setValueEnd(55310000) // 55261999)
-      //   // Set the name of the Band
-      //   .setName('X Axis Band');
+    },
+    createColormap() {
+      const steps = getTurboSteps(this.minDecibel, this.maxDecibel, 0, 255);
+      this.turbo = new LUT({
+        units: 'dB',
+        steps,
+        interpolate: false,
+      });
     },
     createLegend() {
-      // TODO: fix legend memory leak when creating new plot - added this.legend = undefined from LCJS example, might help?
       // Add LegendBox
       if (this.legend) {
         this.legend.dispose();

@@ -6,9 +6,6 @@
 </template>
 
 <script>
-// TODO: zoom to full view when click button https://lightningchart.com/lightningchart-js-interactive-examples/examples/lcjs-example-1111-covidDrillDownDashboard.html?theme=lightNew&page-theme=light
-// dispose data when new data loaded
-// change bathy to heatmap?
 import {
   lightningChart,
   PointShape,
@@ -21,7 +18,9 @@ import {
   UIOrigins,
   ColorRGBA,
   SolidFill,
+  emptyLine,
 } from '@arction/lcjs';
+import { remapDataToTwoDimensionalMatrix } from '@/components/import-functions.js';
 import getTurboSteps from '@/components/turbo.js';
 
 export default {
@@ -32,14 +31,14 @@ export default {
       required: true,
     },
     bathyPoints: {
-      type: Array,
+      type: Object,
       default: () => {
-        return [];
+        return { x: [], y: [], value: [] };
       },
     },
     maxDepth: {
       type: Number,
-      default: 1000,
+      default: 100,
     },
   },
   data() {
@@ -60,6 +59,7 @@ export default {
       pointsSeries: undefined,
       bathyPointsSeries: undefined,
       turbo: {},
+      bathyHeatmapPoints: [],
     };
   },
   watch: {
@@ -68,6 +68,23 @@ export default {
       this.zoomOutToMap();
     },
     bathyPoints() {
+      // remap bathy points to heatmap grid series
+      // array of arrays of values for each row
+      this.bathyHeatmapPoints = remapDataToTwoDimensionalMatrix(
+        this.bathyPoints.value,
+        this.bathyPoints.x.length,
+        this.bathyPoints.y.length
+      );
+      this.bathyYLen = this.bathyPoints.y.length;
+      this.bathyXLen = this.bathyPoints.x.length;
+      this.bathyStart = {
+        x: this.bathyPoints.x[0],
+        y: this.bathyPoints.y[0],
+      };
+      this.bathyEnd = {
+        x: this.bathyPoints.x[this.bathyPoints.x.length - 1],
+        y: this.bathyPoints.y[this.bathyPoints.y.length - 1],
+      };
       this.addPointsToCharts();
       this.zoomOutToMap();
     },
@@ -90,7 +107,7 @@ export default {
     this.mapChart = undefined;
   },
   methods: {
-    createTurbo() {
+    createColormap() {
       const steps = getTurboSteps(0, this.maxDepth, 0, this.maxDepth);
       this.turbo = new LUT({
         units: 'meters',
@@ -99,8 +116,6 @@ export default {
       });
     },
     createChart() {
-      console.log('create geo');
-
       // create map
       this.mapChart = lightningChart()
         .Map({
@@ -122,22 +137,13 @@ export default {
           theme: Themes.darkGold,
           container: `${this.chartId}`,
         })
-        // .setMouseInteractions(false)
+        // .setMouseInteractions(false)//TODO: disable?
         .setTitle('Geo Location')
         .setBackgroundFillStyle(transparentFill)
         .setSeriesBackgroundFillStyle(transparentFill)
         .setAnimationsEnabled(false)
         .setMouseInteractionWheelZoom(false);
       this.chart.engine.setBackgroundFillStyle(transparentFill);
-
-      // Hide axes
-      // this.chart
-      //   .getDefaultAxes()
-      //   .forEach((axis) =>
-      //     axis
-      //       .setTickStrategy(AxisTickStrategies.Empty)
-      //       .setStrokeStyle(emptyLine)
-      //   );
 
       // Synchronize ChartXY with MapChart view.
       this.mapChart.onViewChange((view) => {
@@ -204,37 +210,47 @@ export default {
       this.addPointsToCharts();
     },
     addPointsToCharts() {
-      this.createTurbo();
-      // add bathy
-      if (this.bathyPoints.length > 0) {
-        if (this.bathyPointsSeries) this.bathyPointsSeries.dispose();
+      this.createColormap();
+      // add bathy heatmap
+      if (this.bathyHeatmapPoints.length > 0) {
+        if (this.bathyPointsSeries) {
+          this.bathyPointsSeries.dispose();
+          this.bathyPointsSeries = undefined;
+        }
         this.bathyPointsSeries = this.chart
-          .addPointSeries({ pointShape: PointShape.Circle })
-          .setPointSize(5)
-          .setName('Bathy Depth')
-          .setPointFillStyle(
-            new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
-          )
-          .setIndividualPointValueEnabled(true);
-
-        this.bathyPoints.forEach((v) => {
-          this.bathyPointsSeries.add({
-            x: v.x,
-            y: v.y,
-            value: v.value,
-          });
-        });
+          .addHeatmapGridSeries({
+            columns: this.bathyXLen,
+            rows: this.bathyYLen,
+            start: this.bathyStart,
+            end: this.bathyEnd,
+            dataOrder: 'rows',
+          })
+          .setName('Depth')
+          // Color Heatmap using previously created color look up table.
+          .setFillStyle(new PalettedFill({ lut: this.turbo }))
+          .invalidateIntensityValues(this.bathyHeatmapPoints)
+          .setWireframeStyle(emptyLine);
+        // Use look up table (LUT) to get heatmap intensity value coloring
 
         this.bathyPointsSeries.setCursorResultTableFormatter(
-          (builder, _, x, y, value) =>
+          (builder, series, dataPoint) =>
             builder
-              .addRow('Bathy Data')
-              .addRow('latitude:', '', y.toFixed(4) + '  deg')
-              .addRow('longitude:', '', x.toFixed(4) + ' deg')
-              .addRow('depth:', '', value.value + ' m')
+              .addRow('Bathymetric Data')
+              .addRow(
+                'latitude:',
+                '',
+                series.axisY.formatValue(dataPoint.y) + '  deg'
+              )
+              .addRow(
+                'longitude:',
+                '',
+                series.axisX.formatValue(dataPoint.x) + ' deg'
+              )
+              .addRow('depth:', '', dataPoint.intensity + ' m')
         );
       }
-      // add line
+
+      // add trajectory line
       if (this.pointsSeries) {
         this.pointsSeries.dispose();
         this.pointsSeries = undefined;
@@ -242,7 +258,7 @@ export default {
       this.pointsSeries = this.chart
         .addPointSeries({ pointShape: PointShape.Circle })
         .setPointSize(5)
-        .setName('Glider Depth')
+        .setName('Depth')
         .setPointFillStyle(
           new PalettedFill({ lookUpProperty: 'value', lut: this.turbo })
         )
@@ -254,6 +270,7 @@ export default {
           y: v.y,
           value: v.value,
           speed: v.speed,
+          file: v.file,
         });
       });
       this.pointsSeries.setCursorResultTableFormatter(
@@ -263,7 +280,8 @@ export default {
             .addRow('latitude:', '', y.toFixed(4) + '  deg')
             .addRow('longitude:', '', x.toFixed(4) + ' deg')
             .addRow('depth:', '', value.value.toFixed(2) + ' m')
-            .addRow('speed:', '', value.speed.toFixed(2) + ' cm/s');
+            .addRow('speed:', '', value.speed.toFixed(2) + ' cm/s')
+            .addRow('file:', '', value.file);
         }
       );
 
@@ -272,11 +290,12 @@ export default {
         this.legend.dispose();
         this.legend = undefined;
       }
-      if (this.bathyPoints.length > 0 || this.points.length > 0) {
-        this.legend = this.chart
-          .addLegendBox()
-          .add(this.chart)
-          .setPosition({ x: 100, y: 50 });
+      if (this.bathyPointsSeries) {
+        this.legend = this.chart.addLegendBox().setPosition({ x: 100, y: 50 });
+        this.legend.add(this.bathyPointsSeries);
+      } else if (this.pointsSeries) {
+        this.legend = this.chart.addLegendBox().setPosition({ x: 100, y: 50 });
+        this.legend.add(this.pointsSeries);
       }
     },
     setDrag() {
