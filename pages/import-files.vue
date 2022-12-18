@@ -571,6 +571,7 @@ export default {
       // only read new files
       for (let i = this.gliderData.length; i < this.ncFiles.length; i++) {
         const file = URL.createObjectURL(this.ncFiles[i]);
+        const name = this.ncFiles[i].name;
         await getNetCDFVariables(file, [
           'ctd_time', // unix timestamp - seconds since 1970-1-1 00:00:00
           'ctd_depth', // meters
@@ -614,6 +615,7 @@ export default {
               x: x - startTime, // time in milliseconds since start of nc data
               y: depth, // depth
               value: soundSpeed, // sound speed
+              file: name,
             };
           });
           depthData = depthData.concat(oneDive);
@@ -624,6 +626,7 @@ export default {
               y: v[this.temperatureIndex][i],
               z: v[this.salinityIndex][i],
               value: dive.value, // sound speed
+              file: name,
             };
           });
           tempSalData = tempSalData.concat(tempSalinityData);
@@ -634,6 +637,7 @@ export default {
               y: v[this.latitudeIndex][i], // latitude
               value: dive.y, // depth
               speed: v[this.speedIndex][i], // speed
+              file: name,
             };
           });
           latLonData = latLonData.concat(latitudeLongitude);

@@ -29,12 +29,12 @@ import getTurboSteps from '@/components/turbo.js';
 export default {
   name: 'TrajectoryChart',
   props: {
-    // array of {x:time (milliseconds since start of first file), y:depth, value:soundSpeed}
+    // array of {x:time (milliseconds since start of first file), y:depth, value:soundSpeed, file:filename}
     points: {
       required: true,
       type: Array,
     },
-    // array of {x:time (milliseconds since start of first file),y:temperature,z:salinity,value:soundSpeed}
+    // array of {x:time (milliseconds since start of first file),y:temperature,z:salinity,value:soundSpeed, file:filename}
     points2: {
       required: true,
       type: Array,
@@ -421,6 +421,10 @@ export default {
         .addElement(UILayoutBuilders.Row)
         .addElement(resultTableTextBuilder);
 
+      const filename = resultTable
+        .addElement(UILayoutBuilders.Row)
+        .addElement(resultTableTextBuilder);
+
       const tickX = this.charts[1]
         .getDefaultAxisX()
         .addCustomTick()
@@ -545,6 +549,7 @@ export default {
               .getDefaultAxisY()
               .formatValue(nearestDataPoints[i].location.value)} m/s`
           );
+          filename.setText(`File: ` + nearestDataPoints[i].location.file);
 
           // Position custom ticks.
           tickX.setValue(nearestDataPoints[i].location.x);

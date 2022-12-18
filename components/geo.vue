@@ -270,6 +270,7 @@ export default {
           y: v.y,
           value: v.value,
           speed: v.speed,
+          file: v.file,
         });
       });
       this.pointsSeries.setCursorResultTableFormatter(
@@ -279,7 +280,8 @@ export default {
             .addRow('latitude:', '', y.toFixed(4) + '  deg')
             .addRow('longitude:', '', x.toFixed(4) + ' deg')
             .addRow('depth:', '', value.value.toFixed(2) + ' m')
-            .addRow('speed:', '', value.speed.toFixed(2) + ' cm/s');
+            .addRow('speed:', '', value.speed.toFixed(2) + ' cm/s')
+            .addRow('file:', '', value.file);
         }
       );
 
