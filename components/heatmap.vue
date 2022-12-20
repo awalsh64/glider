@@ -8,6 +8,7 @@ import {
   PalettedFill,
   LUT,
   emptyLine,
+  emptyFill,
   translatePoint,
   Themes,
   LegendBoxBuilders,
@@ -15,6 +16,9 @@ import {
   SolidFill,
   SolidLine,
   ColorHEX,
+  UIOrigins,
+  UIDraggingModes,
+  FontSettings,
 } from '@arction/lcjs';
 
 import getTurboSteps from '@/components/turbo.js';
@@ -44,6 +48,10 @@ export default {
       type: Number,
       default: -60,
     },
+    file: {
+      type: String,
+      default: '',
+    },
   },
   data() {
     // Add the chart to the data in a way that Vue will not attach it's observers to it.
@@ -63,6 +71,7 @@ export default {
       xAxis: null,
       currentTimeLine: null,
       turbo: {},
+      fileTitle: undefined,
     };
   },
   computed: {
@@ -74,20 +83,14 @@ export default {
     spectrogram() {
       this.addDataToChart();
       this.currentTimeLine.setValue(this.currentTime);
+      this.createColormap();
+      this.createLegend();
     },
     selectedTime() {
       this.selectedTimeLine.setValue(this.selectedTime);
     },
     currentTime() {
       this.currentTimeLine.setValue(this.currentTime);
-    },
-    minDecibel() {
-      this.createColormap();
-      this.createLegend();
-    },
-    maxDecibel() {
-      this.createColormap();
-      this.createLegend();
     },
   },
   beforeMount() {
@@ -131,11 +134,25 @@ export default {
           container: `${this.chartId}`,
           theme: Themes.darkGold,
         })
-        .setTitle(
-          'Spectrogram                                                       '
-        )
-        .setPadding({ top: 40 })
+        .setTitle('')
+        .setPadding({ top: 65 })
         .setMouseInteractionWheelZoom(false);
+
+      this.chart
+        .addUIElement(undefined, this.chart.uiScale)
+        .setPosition({ x: 8, y: 90 })
+        .setOrigin(UIOrigins.LeftCenter)
+        .setText('Spectrogram')
+        .setTextFont(
+          new FontSettings({
+            size: 20,
+            weight: 200,
+          })
+        )
+        .setDraggingMode(UIDraggingModes.notDraggable)
+        .setBackground((bg) =>
+          bg.setFillStyle(emptyFill).setStrokeStyle(emptyLine)
+        );
 
       // set axes titles
       this.xAxis = this.chart
@@ -211,6 +228,13 @@ export default {
       }
       this.chart.getDefaultAxisX().fit();
       this.chart.getDefaultAxisY().fit();
+      if (this.fileTitle) this.fileTitle.dispose();
+      this.fileTitle = this.chart
+        .addUIElement(undefined, this.chart.uiScale)
+        .setPosition({ x: 8, y: 80 })
+        .setOrigin(UIOrigins.LeftCenter)
+        .setText('File: ' + this.file)
+        .setDraggingMode(UIDraggingModes.notDraggable);
 
       // setup click listener
       const startTime = this.spectrogram.startTime;
