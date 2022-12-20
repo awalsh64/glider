@@ -67,6 +67,14 @@ export default {
       type: Boolean,
       default: false,
     },
+    minSoundSpeed: {
+      type: Number,
+      default: 1420,
+    },
+    maxSoundSpeed: {
+      type: Number,
+      default: 1570,
+    },
   },
   data() {
     // Add the chart to the data in a way that Vue will not attach it's observers to it.
@@ -90,6 +98,7 @@ export default {
   },
   watch: {
     points() {
+      this.createColormap();
       this.createChart();
       // add points to charts
       this.addLinesToCharts();
@@ -97,6 +106,8 @@ export default {
       this.addTimeMarkers();
       // add cursors
       if (this.lineSeries1) this.addCustomCursor();
+      // add line for clicked time
+      this.addSelectedTimeMarker();
       // add legend
       this.addLegend();
     },
@@ -150,7 +161,12 @@ export default {
   },
   methods: {
     createColormap() {
-      const steps = getTurboSteps(1420, 1570, 1420, 1570);
+      const steps = getTurboSteps(
+        this.minSoundSpeed,
+        this.maxSoundSpeed,
+        this.minSoundSpeed,
+        this.maxSoundSpeed
+      );
       this.turbo = new LUT({
         units: 'm/s',
         steps,
@@ -238,7 +254,7 @@ export default {
           color: 'orange',
         })
         .setAnimationScroll(undefined)
-        .setTitle('Salinity (ppt)')
+        .setTitle('Salinity (PSU)')
         .setTitleFillStyle(new SolidFill({ color: ColorHEX('#ff9b5b') }))
         // Hide tick grid-lines from second Y axis.
         .setTickStrategy(AxisTickStrategies.Numeric, (ticks) =>
@@ -291,7 +307,7 @@ export default {
           // Specify index for automatic color selection. By default this would be 1, but a larger number is supplied to increase contrast between series.
           automaticColorIndex: 2,
         })
-        .setName('Salinity (ppt)')
+        .setName('Salinity (PSU)')
         // Data set contains PPM measurement values only. First measurement is from year 1880, and each consecutive measurement is 1 year after previous.
         .add(
           this.points2.map((v) => ({
@@ -533,7 +549,7 @@ export default {
               .formatValue(nearestDataPoints[i].location.x)}`
           );
           const titles = ['Depth', 'Temp', 'Salinity'];
-          const units = ['m', '°C', 'ppt'];
+          const units = ['m', '°C', 'PSU'];
           rowsY.forEach((rowY, i) => {
             let chart = i;
             if (i > 1) chart = 1;

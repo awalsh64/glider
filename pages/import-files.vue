@@ -242,6 +242,8 @@
         :spectrogram-times="spectrogramTimes"
         :hide-temp="hideTemp"
         :hide-trajectory="hideTrajectory"
+        :min-sound-speed="minSoundSpeed"
+        :max-sound-speed="maxSoundSpeed"
         @date="selectedDate = $event"
       />
     </div>
@@ -268,6 +270,7 @@
         :min-decibel="Number(minDecibelInput)"
         :max-decibel="Number(maxDecibelInput)"
         :current-time="currentTime"
+        :file="spectrogramFile"
       />
     </div>
 
@@ -380,8 +383,9 @@ export default {
       latitudeIndex: 2,
       longitudeIndex: 3,
       temperatureIndex: 4,
-      salinityIndex: 5,
+      salinityRawIndex: 5,
       speedIndex: 6,
+      salinityIndex: 7,
       spectrogramData: {},
       spectrogramTimes: [],
       audioFiles: [],
@@ -395,6 +399,9 @@ export default {
       gliderDepth: [],
       tempSalData: [],
       latLonData: [],
+      minSoundSpeed: 1420,
+      maxSoundSpeed: 1570,
+      spectrogramFile: '',
       startDate: new Date(),
       resolution: {
         x: 1000,
@@ -568,6 +575,9 @@ export default {
       let latLonData = [];
       let startTime = 0;
       let maxDepth = this.maxDepth;
+      this.minSoundSpeed = 1600; // set out of range so first calculated value will be set
+      this.maxSoundSpeed = 0;
+
       // only read new files
       for (let i = this.gliderData.length; i < this.ncFiles.length; i++) {
         const file = URL.createObjectURL(this.ncFiles[i]);
@@ -580,6 +590,7 @@ export default {
           'temperature', // deg Celsius
           'salinity_raw', // ppt
           'speed', // cm/s
+          'salinity', // psu (practical salinity units)
         ]).then((v) => {
           // Documentation: https://www.digitalocean.com/community/tutorials/understanding-date-and-time-in-javascript
           v[0] = v[0].map((time) => {
@@ -598,7 +609,7 @@ export default {
             const depth = v[this.ctdDepthIndex][i]; // meters
             maxDepth = Math.max(maxDepth, depth);
             const T = v[this.temperatureIndex][i]; // Celcius
-            const S = v[this.salinityIndex][i]; // ppt
+            const S = v[this.salinityRawIndex][i]; // ppt
             const D = depth; // meters
             const soundSpeed =
               1448.96 +
@@ -611,6 +622,8 @@ export default {
               1.025 * 10 ** -2 * T * (S - 35) -
               7.139 * 10 ** -13 * T * D ** 3; // documentation: Mackenzie equation (1981) http://resource.npl.co.uk/acoustics/techguides/soundseawater/underlying-phys.html
             // reference: K.V. Mackenzie, Nine-term equation for the sound speed in the oceans (1981) J. Acoust. Soc. Am. 70(3), pp 807-812
+            this.minSoundSpeed = Math.min(soundSpeed, this.minSoundSpeed);
+            this.maxSoundSpeed = Math.max(soundSpeed, this.maxSoundSpeed);
             return {
               x: x - startTime, // time in milliseconds since start of nc data
               y: depth, // depth
@@ -624,13 +637,12 @@ export default {
             return {
               x: dive.x, // time
               y: v[this.temperatureIndex][i],
-              z: v[this.salinityIndex][i],
+              z: isNaN(v[this.salinityIndex][i]) ? 0 : v[this.salinityIndex][i],
               value: dive.value, // sound speed
               file: name,
             };
           });
           tempSalData = tempSalData.concat(tempSalinityData);
-
           const latitudeLongitude = oneDive.map((dive, i) => {
             return {
               x: v[this.longitudeIndex][i], // longitude
@@ -693,6 +705,7 @@ export default {
         data = v;
       });
       // }
+      this.spectrogramFile = file.name;
       data.startTime = this.spectrogramTimes[loadFileNum].startTime;
       data.startDate = this.spectrogramTimes[loadFileNum].startDate;
       this.currentTime = data.startTime;
