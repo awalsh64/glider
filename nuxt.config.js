@@ -1,4 +1,4 @@
-import colors from 'vuetify/es5/util/colors'
+import colors from 'vuetify/es5/util/colors';
 
 export default {
   // Disable server-side rendering: https://go.nuxtjs.dev/ssr-mode
@@ -9,12 +9,17 @@ export default {
 
   // Build to repo name for GitHub Pages
   router: {
-    base: '/glider'
+    base: '/glider',
+  },
+
+  // store url for github pages deployment
+  publicRuntimeConfig: {
+    BASE_URL: '/glider',
   },
 
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
-    titleTemplate: '%s - glider',
+    titleTemplate: 'Glider Data Viewer',
     title: 'glider',
     meta: [
       { charset: 'utf-8' },
@@ -88,5 +93,25 @@ export default {
   },
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
-  build: {},
-}
+  build: {
+    loaders: {
+      vue: {
+        transformAssetUrls: {
+          audio: 'src',
+        },
+      },
+    },
+
+    extend(config) {
+      config.module.rules.push({
+        test: /\.(ogg|mp3|wav|mpe?g)$/i,
+        loader: 'file-loader',
+        options: {
+          name: '[path][name].[ext]',
+        },
+      });
+    },
+  },
+
+  telemetry: true,
+};
